@@ -1,0 +1,1919 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Training Dashboard</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page:            #f9f9f7;
+    --surface-1:       #fcfcfb;
+    --text-primary:    #0b0b0b;
+    --text-secondary:  #52514e;
+    --text-muted:      #898781;
+    --grid:            #e1e0d9;
+    --axis:            #c3c2b7;
+    --border:          rgba(11,11,11,0.10);
+    --good:            #006300;
+    --warn:            #a35f00;
+    --bad:             #d03b3b;
+
+    --sport-run:       #2a78d6;
+    --sport-bike:      #eb6834;
+    --sport-swim:      #1baf7a;
+    --sport-strength:  #eda100;
+    --sport-other:     #e87ba4;
+
+    /* Garmin's zone scheme: 1 grey, 2 blue, 3 green, 4 orange, 5 red */
+    --z1: #898781;  --z2: #2a78d6;  --z3: #008300;  --z4: #ef8c00;  --z5: #e34948;
+
+    --intensity: #4a3aa7;   /* categorical slot 7 — unused elsewhere on the page */
+
+    --heat-0: #eceae4;
+    --heat-1: #cde2fb;  --heat-2: #9ec5f4;  --heat-3: #5598e7;
+    --heat-4: #256abf;  --heat-5: #104281;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --page:           #0d0d0d;
+      --surface-1:      #1a1a19;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --grid:           #2c2c2a;
+      --axis:           #383835;
+      --border:         rgba(255,255,255,0.10);
+      --good:           #0ca30c;
+      --warn:           #e0a12c;
+      --bad:            #e66767;
+
+      --sport-run:      #3987e5;
+      --sport-bike:     #d95926;
+      --sport-swim:     #199e70;
+      --sport-strength: #c98500;
+      --sport-other:    #d55181;
+
+      --z1: #898781;  --z2: #3987e5;  --z3: #008300;  --z4: #c98500;  --z5: #dd3b3b;
+
+      --intensity: #9085e9;
+
+      --heat-0: #2c2c2a;
+      --heat-1: #184f95;  --heat-2: #256abf;  --heat-3: #3987e5;
+      --heat-4: #86b6ef;  --heat-5: #cde2fb;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page:           #0d0d0d;
+    --surface-1:      #1a1a19;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --grid:           #2c2c2a;
+    --axis:           #383835;
+    --border:         rgba(255,255,255,0.10);
+    --good:           #0ca30c;
+    --warn:           #e0a12c;
+    --bad:            #e66767;
+
+    --sport-run:      #3987e5;
+    --sport-bike:     #d95926;
+    --sport-swim:     #199e70;
+    --sport-strength: #c98500;
+    --sport-other:    #d55181;
+
+    --z1: #898781;  --z2: #3987e5;  --z3: #008300;  --z4: #c98500;  --z5: #dd3b3b;
+
+    --intensity: #9085e9;
+
+    --heat-0: #2c2c2a;
+    --heat-1: #184f95;  --heat-2: #256abf;  --heat-3: #3987e5;
+    --heat-4: #86b6ef;  --heat-5: #cde2fb;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 32px 20px 64px; }
+
+  header.top { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 4px; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+  .updated { color: var(--text-muted); font-size: 12px; }
+
+  /* one filter row, above everything it scopes */
+  .filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 20px 0 24px; }
+  .filters .lbl { color: var(--text-muted); font-size: 12px; margin-right: 2px; }
+  .chip {
+    appearance: none; border: 1px solid var(--border); background: var(--surface-1);
+    color: var(--text-secondary); border-radius: 999px; padding: 5px 13px;
+    font: inherit; font-size: 13px; cursor: pointer;
+  }
+  .chip:hover { border-color: var(--axis); }
+  .chip[aria-pressed="true"] { background: var(--text-primary); color: var(--surface-1); border-color: var(--text-primary); font-weight: 600; }
+  .spacer { flex: 1 1 auto; }
+
+  .card {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px 22px 18px; margin-bottom: 18px;
+  }
+  .card > h2 { font-size: 15px; font-weight: 600; margin: 0 0 2px; }
+  .card > .sub { color: var(--text-muted); font-size: 12px; margin: 0 0 16px; }
+
+  /* hero + KPI */
+  .hero-row { display: flex; gap: 32px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 22px; }
+  .hero .label { color: var(--text-muted); font-size: 12px; }
+  .hero .value { font-size: 52px; font-weight: 600; line-height: 1.05; letter-spacing: -0.02em; }
+  .hero .unit { font-size: 20px; font-weight: 500; color: var(--text-secondary); margin-left: 4px; }
+  .hero .delta { font-size: 13px; color: var(--text-secondary); }
+
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .kpi { background: var(--surface-1); padding: 13px 15px 11px; min-width: 0; }
+  .kpi .label { color: var(--text-muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .kpi .value { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; margin-top: 1px; }
+  .kpi .value .u { font-size: 13px; font-weight: 500; color: var(--text-secondary); margin-left: 4px; }
+  .kpi .foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 3px; min-height: 18px; }
+  .kpi .delta { font-size: 11.5px; color: var(--text-secondary); white-space: nowrap; }
+  .kpi .delta.up { color: var(--good); }
+  .kpi .delta.down { color: var(--bad); }
+  .kpi svg.spark { display: block; }
+
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin: 0 0 12px; padding: 0; list-style: none; }
+  .legend li { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
+  .legend .key-rect { width: 11px; height: 11px; border-radius: 2px; flex: none; }
+  .legend .key-line { width: 14px; height: 2px; border-radius: 1px; flex: none; }
+
+  .chart { position: relative; }
+  .chart svg { display: block; width: 100%; }
+  text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .tick { font-size: 11px; fill: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .lbl-direct { font-size: 11px; fill: var(--text-secondary); font-weight: 600; }
+
+  .smalls { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 18px; }
+  .small h3 { font-size: 13px; font-weight: 600; margin: 0 0 1px; }
+  .small .sub { color: var(--text-muted); font-size: 11.5px; margin: 0 0 8px; }
+
+  /* tooltip */
+  .tip {
+    position: fixed; z-index: 50; pointer-events: none; opacity: 0;
+    transition: opacity .09s; background: var(--surface-1);
+    border: 1px solid var(--border); border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.14); padding: 8px 10px;
+    font-size: 12px; min-width: 132px; max-width: 260px;
+  }
+  .tip .t-head { color: var(--text-secondary); font-size: 11.5px; margin-bottom: 5px; }
+  .tip .t-row { display: flex; align-items: center; gap: 7px; margin-top: 2px; }
+  .tip .t-key { width: 12px; height: 2px; border-radius: 1px; flex: none; }
+  .tip .t-val { font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .tip .t-name { color: var(--text-secondary); margin-left: auto; }
+
+  /* table view */
+  .tbl-toggle {
+    appearance: none; background: none; border: none; padding: 6px 0 0;
+    color: var(--text-secondary); font: inherit; font-size: 12px;
+    cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
+  }
+  .tbl-toggle:hover { color: var(--text-primary); }
+  .tbl-wrap { overflow-x: auto; margin-top: 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  th, td { text-align: right; padding: 6px 10px; white-space: nowrap; border-bottom: 1px solid var(--grid); }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--text-muted); font-weight: 500; font-size: 11.5px; position: sticky; top: 0; background: var(--surface-1); }
+  td { font-variant-numeric: tabular-nums; color: var(--text-secondary); }
+  td.name { color: var(--text-primary); max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { color: var(--text-primary); }
+  .sessions-wrap { max-height: 460px; overflow: auto; }
+  .sport-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+  .empty { color: var(--text-muted); font-size: 13px; padding: 24px 0; }
+  .note { color: var(--text-muted); font-size: 11.5px; margin-top: 10px; }
+
+  /* race section: same tile grammar as the KPIs, one extra line of context */
+  .race-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .race-head .when { color: var(--text-muted); font-size: 12px; }
+  .kpi .foot .ctx { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .kpi .delta.flat { color: var(--text-muted); }
+  .section-label { color: var(--text-muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; margin: 28px 0 10px; }
+  .legend .key-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .legend .key-dot.hollow { background: var(--surface-1) !important; border: 2px solid var(--axis); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <h1>Training</h1>
+    <div class="updated" id="updated"></div>
+  </header>
+
+  <div class="filters" role="group" aria-label="Date range">
+    <span class="lbl">Range</span>
+    <button class="chip" data-days="7">7 days</button>
+    <button class="chip" data-days="30">30 days</button>
+    <button class="chip" data-days="90">90 days</button>
+    <button class="chip" data-days="180">6 months</button>
+    <button class="chip" data-days="365">1 year</button>
+    <button class="chip" data-days="0">All</button>
+    <span class="spacer"></span>
+    <button class="chip" id="theme-btn" aria-pressed="false">Dark</button>
+  </div>
+
+  <section class="card">
+    <div class="hero-row">
+      <div class="hero">
+        <div class="label" id="hero-label">Training time</div>
+        <div class="value" id="hero-value">—</div>
+        <div class="delta" id="hero-delta"></div>
+      </div>
+    </div>
+    <div class="kpis" id="kpis"></div>
+    <p class="note">Deltas compare against the equivalent preceding period. For resting heart rate, lower is better.</p>
+  </section>
+
+  <p class="section-label">Race preparation · full history, not scoped by the range filter</p>
+
+  <section class="card" id="race-card">
+    <div class="race-head">
+      <h2 id="race-title">Race</h2>
+      <span class="when" id="race-when"></span>
+    </div>
+    <p class="sub" id="race-sub"></p>
+    <div class="kpis" id="race-kpis"></div>
+    <p class="note" id="race-note"></p>
+  </section>
+
+  <section class="card">
+    <h2>Garmin race predictor vs actual efforts</h2>
+    <p class="sub">The watch's daily half-marathon prediction, against the goal and against what your long runs actually project to. The gap between the line and the dots is how optimistic the predictor is for you.</p>
+    <ul class="legend" id="pred-legend"></ul>
+    <div class="chart" id="pred-chart"></div>
+    <p class="note" id="pred-note"></p>
+    <button class="tbl-toggle" data-table="pred-table">Show data table</button>
+    <div class="tbl-wrap" id="pred-table" hidden></div>
+  </section>
+
+  <section class="card">
+    <h2>Weeks to race · mileage ramp and taper</h2>
+    <p class="sub">Running miles per week counting down to race day. The line is a suggested taper built from your recent average — hold it to three weeks out, then step down.</p>
+    <ul class="legend" id="ramp-legend"></ul>
+    <div class="chart" id="ramp-chart"></div>
+    <p class="note" id="ramp-note"></p>
+    <button class="tbl-toggle" data-table="ramp-table">Show data table</button>
+    <div class="tbl-wrap" id="ramp-table" hidden></div>
+  </section>
+
+  <section class="card">
+    <h2>Goal-pace frontier</h2>
+    <p class="sub">Every run, pace against distance. The step line is the fastest pace you have held at each distance or longer; the gap between it and the goal line at 13.1 mi is the work left.</p>
+    <ul class="legend" id="frontier-legend"></ul>
+    <div class="chart" id="frontier-chart"></div>
+    <p class="note" id="frontier-note"></p>
+    <button class="tbl-toggle" data-table="frontier-table">Show data table</button>
+    <div class="tbl-wrap" id="frontier-table" hidden></div>
+  </section>
+
+  <section class="card">
+    <h2 id="effort-title">Half-marathon efforts</h2>
+    <p class="sub" id="effort-sub">Each run of 12 miles or more, projected to a 13.1-mile finish at the pace you actually ran, beside what Garmin was predicting that same day. The solid line is the goal.</p>
+    <ul class="legend" id="effort-legend"></ul>
+    <div class="chart" id="effort-chart"></div>
+    <p class="note" id="effort-note"></p>
+    <button class="tbl-toggle" data-table="effort-table">Show data table</button>
+    <div class="tbl-wrap" id="effort-table" hidden></div>
+  </section>
+
+  <section class="card">
+    <h2>Long-run progression</h2>
+    <p class="sub">Longest single run each week, through race week. The line is race distance.</p>
+    <div class="chart" id="longrun-chart"></div>
+    <p class="note" id="longrun-note"></p>
+    <button class="tbl-toggle" data-table="longrun-table">Show data table</button>
+    <div class="tbl-wrap" id="longrun-table" hidden></div>
+  </section>
+
+  <p class="section-label">Training · scoped by the range filter</p>
+
+  <section class="card">
+    <h2 id="vol-title">Weekly volume by sport</h2>
+    <p class="sub" id="vol-sub">Hours per week, Monday-start. Stacked to show total load and the mix inside it.</p>
+    <ul class="legend" id="vol-legend"></ul>
+    <div class="chart" id="vol-chart"></div>
+    <button class="tbl-toggle" data-table="vol-table">Show data table</button>
+    <div class="tbl-wrap" id="vol-table" hidden></div>
+  </section>
+
+  <section class="card" id="cal-card">
+    <h2>Training calendar</h2>
+    <p class="sub">Minutes of activity per day. Darker is more.</p>
+    <div class="chart" id="cal-chart"></div>
+    <button class="tbl-toggle" data-table="cal-table">Show data table</button>
+    <div class="tbl-wrap" id="cal-table" hidden></div>
+  </section>
+
+  <section class="card">
+    <h2>Recovery strip</h2>
+    <p class="sub">One column per day: what you trained, then what the watch saw overnight and through the day. Read it top to bottom to see what a block of work cost.</p>
+    <ul class="legend" id="strip-legend"></ul>
+    <div class="chart" id="strip-chart"></div>
+    <p class="note" id="strip-note"></p>
+    <button class="tbl-toggle" data-table="strip-table">Show data table</button>
+    <div class="tbl-wrap" id="strip-table" hidden></div>
+  </section>
+
+  <section class="card">
+    <h2>Training load · acute vs chronic</h2>
+    <p class="sub">Load is minutes in each heart-rate zone weighted 1–5, every sport. Acute is the 7-day average, chronic the 28-day. The ratio panel's shaded band (0.8–1.3) is the range where load is rising no faster than fitness.</p>
+    <ul class="legend" id="acwr-legend"></ul>
+    <div class="smalls" id="acwr-smalls"></div>
+    <p class="note" id="acwr-note"></p>
+    <button class="tbl-toggle" data-table="acwr-table">Show data table</button>
+    <div class="tbl-wrap" id="acwr-table" hidden></div>
+  </section>
+
+  <section class="card">
+    <h2 id="zone-title">Weekly time in heart-rate zones</h2>
+    <p class="sub">Where the intensity actually went. Zone 1 is easy, zone 5 is maximal.</p>
+    <ul class="legend" id="zone-legend"></ul>
+    <div class="chart" id="zone-chart"></div>
+    <button class="tbl-toggle" data-table="zone-table">Show data table</button>
+    <div class="tbl-wrap" id="zone-table" hidden></div>
+  </section>
+
+  <section class="card">
+    <h2 id="bal-title">Intensity balance</h2>
+    <p class="sub" id="bal-sub">Share of running time spent easy (zones 1–2). The line is the 80% target for distance training — bars short of it mean the easy days aren't easy.</p>
+    <div class="chart" id="bal-chart"></div>
+    <p class="note" id="bal-note"></p>
+    <button class="tbl-toggle" data-table="bal-table">Show data table</button>
+    <div class="tbl-wrap" id="bal-table" hidden></div>
+  </section>
+
+  <section class="card">
+    <h2>Intensity per run</h2>
+    <p class="sub">Average heart rate of every run, coloured by the zone it spent the most time in. A tight cluster means every day is the same day.</p>
+    <ul class="legend" id="runhr-legend"></ul>
+    <div class="chart" id="runhr-chart"></div>
+    <p class="note" id="runhr-note"></p>
+    <button class="tbl-toggle" data-table="runhr-table">Show data table</button>
+    <div class="tbl-wrap" id="runhr-table" hidden></div>
+  </section>
+
+  <section class="card">
+    <h2>Aerobic efficiency</h2>
+    <p class="sub">Metres covered per heartbeat on runs of 3 miles or more. It rises as fitness improves, whatever the pace on the day; the line is a five-run rolling mean.</p>
+    <ul class="legend" id="ef-legend"></ul>
+    <div class="chart" id="ef-chart"></div>
+    <p class="note" id="ef-note"></p>
+    <button class="tbl-toggle" data-table="ef-table">Show data table</button>
+    <div class="tbl-wrap" id="ef-table" hidden></div>
+  </section>
+
+  <section class="card">
+    <h2 id="easy-title">Easy-day pace vs temperature</h2>
+    <p class="sub" id="easy-sub"></p>
+    <ul class="legend" id="easy-legend"></ul>
+    <div class="chart" id="easy-chart"></div>
+    <p class="note" id="easy-note"></p>
+    <button class="tbl-toggle" data-table="easy-table">Show data table</button>
+    <div class="tbl-wrap" id="easy-table" hidden></div>
+  </section>
+
+  <section class="card">
+    <h2>Fitness &amp; recovery</h2>
+    <p class="sub">Daily wellness from the watch. Each panel is one measure on its own scale.</p>
+    <div class="smalls" id="smalls"></div>
+    <p class="note" id="well-note"></p>
+    <button class="tbl-toggle" data-table="well-table">Show data table</button>
+    <div class="tbl-wrap" id="well-table" hidden></div>
+  </section>
+
+  <section class="card">
+    <h2>Sessions</h2>
+    <p class="sub" id="sessions-sub"></p>
+    <div class="tbl-wrap sessions-wrap" id="sessions-table"></div>
+  </section>
+
+</div>
+
+<div class="tip" id="tip" role="status" aria-live="polite"></div>
+
+<script>
+const DATA = /*__DATA__*/;
+
+/* ---------------------------------------------------------------- utils */
+const SVGNS = "http://www.w3.org/2000/svg";
+const $ = (id) => document.getElementById(id);
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+function el(tag, attrs, parent) {
+  const n = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(n);
+  return n;
+}
+function txt(parent, x, y, str, cls, anchor) {
+  const t = el("text", { x, y, class: cls || "tick" }, parent);
+  if (anchor) t.setAttribute("text-anchor", anchor);
+  t.textContent = str;              // untrusted labels never touch innerHTML
+  return t;
+}
+
+const M_PER_MI = 1609.344, M_PER_YD = 0.9144;
+const fmtNum = (v, d = 0) => v == null || !isFinite(v) ? "—"
+  : v.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
+function fmtDur(sec) {
+  if (!sec) return "—";
+  const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60);
+  return h ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m`;
+}
+function fmtPace(secPerUnit) {
+  if (!secPerUnit || !isFinite(secPerUnit)) return "—";
+  const m = Math.floor(secPerUnit / 60), s = Math.round(secPerUnit % 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+const parseDay = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+const dayKey = (dt) => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+function mondayOf(dt) {
+  const d = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d;
+}
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const shortDate = (dt) => `${MONTHS[dt.getMonth()]} ${dt.getDate()}`;
+
+/* rounded only on the data-end, square at the baseline */
+function topRoundedPath(x, y, w, h, r) {
+  r = Math.max(0, Math.min(r, w / 2, h));
+  return `M${x},${y + h}L${x},${y + r}Q${x},${y} ${x + r},${y}` +
+         `L${x + w - r},${y}Q${x + w},${y} ${x + w},${y + r}L${x + w},${y + h}Z`;
+}
+function niceTicks(max, count) {
+  if (max <= 0) return { max: 1, ticks: [0, 1] };
+  const raw = max / count, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].find((m) => mag * m >= raw) * mag;
+  const top = Math.ceil(max / step) * step;
+  const ticks = [];
+  for (let v = 0; v <= top + 1e-9; v += step) ticks.push(+v.toFixed(6));
+  return { max: top, ticks };
+}
+
+/* ------------------------------------------------------------- taxonomy */
+const SPORTS = [
+  { key: "run",      label: "Run",      color: "--sport-run" },
+  { key: "bike",     label: "Bike",     color: "--sport-bike" },
+  { key: "swim",     label: "Swim",     color: "--sport-swim" },
+  { key: "strength", label: "Strength", color: "--sport-strength" },
+  { key: "other",    label: "Other",    color: "--sport-other" },
+];
+const SPORT_BY_KEY = Object.fromEntries(SPORTS.map((s) => [s.key, s]));
+const ZONES = [
+  { key: "z1", label: "Zone 1", color: "--z1" },
+  { key: "z2", label: "Zone 2", color: "--z2" },
+  { key: "z3", label: "Zone 3", color: "--z3" },
+  { key: "z4", label: "Zone 4", color: "--z4" },
+  { key: "z5", label: "Zone 5", color: "--z5" },
+];
+
+/* --------------------------------------------------------------- state */
+const acts = DATA.activities.slice().sort((a, b) => a.date < b.date ? -1 : 1);
+const wellByDate = DATA.wellness;
+const wellDates = Object.keys(wellByDate).sort();
+let state = { days: 90, view: null };
+
+function windowFor(days) {
+  if (!acts.length) return { start: new Date(), end: new Date() };
+  const end = new Date();
+  end.setHours(0, 0, 0, 0);
+  if (!days) {
+    const first = parseDay(acts[0].date);
+    return { start: first, end };
+  }
+  const start = new Date(end);
+  start.setDate(start.getDate() - days + 1);
+  return { start, end };
+}
+const inRange = (dateStr, w) => { const d = parseDay(dateStr); return d >= w.start && d <= w.end; };
+
+function computeView(days) {
+  const w = windowFor(days);
+  const span = Math.round((w.end - w.start) / 86400000) + 1;
+  const prevEnd = new Date(w.start); prevEnd.setDate(prevEnd.getDate() - 1);
+  const prevStart = new Date(prevEnd); prevStart.setDate(prevStart.getDate() - span + 1);
+  const prev = { start: prevStart, end: prevEnd };
+  return {
+    window: w, span,
+    acts: acts.filter((a) => inRange(a.date, w)),
+    prevActs: acts.filter((a) => inRange(a.date, prev)),
+    well: wellDates.filter((d) => inRange(d, w)).map((d) => wellByDate[d]),
+    prevWell: wellDates.filter((d) => inRange(d, prev)).map((d) => wellByDate[d]),
+  };
+}
+
+/* ------------------------------------------------------------- tooltip */
+const tip = $("tip");
+function showTip(evt, head, rows) {
+  tip.replaceChildren();
+  const h = document.createElement("div");
+  h.className = "t-head"; h.textContent = head;
+  tip.appendChild(h);
+  for (const r of rows) {
+    const row = document.createElement("div");
+    row.className = "t-row";
+    if (r.color) {
+      const k = document.createElement("span");
+      k.className = "t-key"; k.style.background = r.color;
+      row.appendChild(k);
+    }
+    const v = document.createElement("span");
+    v.className = "t-val"; v.textContent = r.value;      // values lead
+    row.appendChild(v);
+    const n = document.createElement("span");
+    n.className = "t-name"; n.textContent = r.name;      // label follows
+    row.appendChild(n);
+    tip.appendChild(row);
+  }
+  tip.style.opacity = "1";
+  const pad = 14, tw = tip.offsetWidth, th = tip.offsetHeight;
+  let x = evt.clientX + pad, y = evt.clientY + pad;
+  if (x + tw > innerWidth - 8) x = evt.clientX - tw - pad;
+  if (y + th > innerHeight - 8) y = evt.clientY - th - pad;
+  tip.style.left = Math.max(8, x) + "px";
+  tip.style.top = Math.max(8, y) + "px";
+}
+const hideTip = () => { tip.style.opacity = "0"; };
+
+/* ------------------------------------------------ stacked column chart */
+function stackedColumns(host, cfg) {
+  host.replaceChildren();
+  const W = Math.max(320, host.clientWidth || 720);
+  // a wider right pad puts the reference label in a gutter, clear of the bars
+  const padL = 44, padR = cfg.padR || 14, padT = 12, plotH = 210, axisH = 30;
+  const H = padT + plotH + axisH;
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img" }, host);
+  svg.setAttribute("aria-label", cfg.ariaLabel);
+
+  const bands = cfg.rows.length;
+  if (!bands) { host.innerHTML = ""; host.append(Object.assign(document.createElement("p"), { className: "empty", textContent: "No activity in this range." })); return; }
+
+  const totals = cfg.rows.map((r) => cfg.series.reduce((s, k) => s + (r.values[k] || 0), 0));
+  const { max, ticks } = cfg.scale || niceTicks(Math.max(...totals, 0.001), 4);
+  const plotW = W - padL - padR;
+  const band = plotW / bands;
+  const bw = Math.min(24, band * 0.72);
+  const y = (v) => padT + plotH - (v / max) * plotH;
+  const GAP = 2;
+
+  for (const t of ticks) {
+    el("line", { x1: padL, x2: W - padR, y1: y(t), y2: y(t), stroke: css("--grid"), "stroke-width": 1 }, svg);
+    txt(svg, padL - 8, y(t) + 4, cfg.fmtTick(t), "tick", "end");
+  }
+  el("line", { x1: padL, x2: W - padR, y1: y(0), y2: y(0), stroke: css("--axis"), "stroke-width": 1 }, svg);
+
+  // target line: solid hairline in ink, so it reads as a threshold not a gridline
+  if (cfg.reference) {
+    const ry = y(cfg.reference.value);
+    el("line", { x1: padL, x2: W - padR, y1: ry, y2: ry, stroke: css("--text-secondary"), "stroke-width": 1 }, svg);
+    if (cfg.padR) txt(svg, W - padR + 6, ry + 4, cfg.reference.label, "lbl-direct", "start");
+    else txt(svg, W - padR, ry - 6, cfg.reference.label, "lbl-direct", "end");
+  }
+
+  cfg.rows.forEach((row, i) => {
+    const cx = padL + band * i + band / 2;
+    const x = cx - bw / 2;
+    let acc = 0;
+    const painted = [];
+    cfg.series.forEach((key) => {
+      const v = row.values[key] || 0;
+      if (v > 0) painted.push({ key, v, base: acc }), acc += v;
+    });
+    painted.forEach((p, idx) => {
+      const yTop = y(p.base + p.v);
+      const yBot = y(p.base);
+      const isTop = idx === painted.length - 1;
+      // 2px surface gap between touching segments (not a stroke)
+      let h = yBot - yTop - (idx > 0 ? GAP : 0);
+      if (h < 1) h = 1;
+      const color = css(cfg.colorOf(p.key));
+      if (isTop) {
+        el("path", { d: topRoundedPath(x, yTop, bw, h, 4), fill: color }, svg);
+      } else {
+        el("rect", { x, y: yTop, width: bw, height: h, fill: color }, svg);
+      }
+    });
+    // optional direct label on the bar's data end (selective: caller decides which rows)
+    if (cfg.barLabel && totals[i] > 0) {
+      const s = cfg.barLabel(row, totals[i]);
+      if (s) txt(svg, cx, y(totals[i]) - 6, s, "lbl-direct", "middle");
+    }
+
+    // hit target spans the full band, always wider than the mark
+    const hit = el("rect", { x: padL + band * i, y: padT, width: band, height: plotH, fill: "transparent", tabindex: "0", role: "button" }, svg);
+    hit.setAttribute("aria-label", `${row.label}: ${cfg.fmtTick(totals[i])}`);
+    const rows = () => {
+      if (cfg.tipRows) return cfg.tipRows(row);
+      const out = cfg.series.map((k) => ({ color: css(cfg.colorOf(k)), value: cfg.fmtValue(row.values[k] || 0), name: cfg.labelOf(k) }));
+      out.push({ color: null, value: cfg.fmtValue(totals[i]), name: "Total" });
+      return out;
+    };
+    const show = (e) => showTip(e, row.tipLabel || row.label, rows());
+    hit.addEventListener("pointermove", show);
+    hit.addEventListener("pointerleave", hideTip);
+    hit.addEventListener("focus", (e) => {
+      const r = hit.getBoundingClientRect();
+      show({ clientX: r.left + r.width / 2, clientY: r.top + 20 });
+    });
+    hit.addEventListener("blur", hideTip);
+  });
+
+  // optional overlay line (e.g. a plan) drawn over the bars, one value per row
+  if (cfg.overlay) {
+    const color = css(cfg.overlay.color);
+    const pts = cfg.overlay.values
+      .map((v, i) => v == null ? null : { x: padL + band * i + band / 2, y: y(Math.min(v, max)) })
+      .filter(Boolean);
+    if (pts.length > 1) {
+      el("path", { d: "M" + pts.map((p) => `${p.x},${p.y}`).join("L"), fill: "none",
+        stroke: color, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round",
+        "pointer-events": "none" }, svg);
+    }
+    for (const p of pts) el("circle", { cx: p.x, cy: p.y, r: 4, fill: color, stroke: css("--surface-1"), "stroke-width": 2, "pointer-events": "none" }, svg);
+  }
+
+  // x labels, thinned so they never collide
+  const every = Math.max(1, Math.ceil(bands / Math.max(1, Math.floor(plotW / 66))));
+  cfg.rows.forEach((row, i) => {
+    if (i % every !== 0 && i !== bands - 1) return;
+    // the last band always gets a label; drop any that would crowd it
+    if (i !== bands - 1 && (bands - 1 - i) < every) return;
+    txt(svg, padL + band * i + band / 2, padT + plotH + 21, row.label, "tick", "middle");
+  });
+}
+
+/* ------------------------------------------------------- line panel */
+function linePanel(host, cfg) {
+  host.replaceChildren();
+  const W = Math.max(240, host.clientWidth || 320);
+  const padL = 36, padR = 12, padT = 10, plotH = 118, axisH = 22;
+  const H = padT + plotH + axisH;
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img" }, host);
+  svg.setAttribute("aria-label", cfg.ariaLabel);
+
+  const pts = cfg.points.filter((p) => p.v != null && isFinite(p.v));
+  if (pts.length < 2) {
+    host.replaceChildren(Object.assign(document.createElement("p"), { className: "empty", textContent: "Not enough data yet." }));
+    return;
+  }
+  const xs = pts.map((p) => p.t);
+  const t0 = Math.min(...xs), t1 = Math.max(...xs);
+  let lo = Math.min(...pts.map((p) => p.v)), hi = Math.max(...pts.map((p) => p.v));
+  if (cfg.band) {
+    lo = Math.min(lo, ...cfg.band.filter((b) => b.lo != null).map((b) => b.lo));
+    hi = Math.max(hi, ...cfg.band.filter((b) => b.hi != null).map((b) => b.hi));
+  }
+  const pad = (hi - lo) * 0.18 || 1;
+  lo -= pad; hi += pad;
+  const plotW = W - padL - padR;
+  const X = (t) => padL + (t1 === t0 ? plotW / 2 : ((t - t0) / (t1 - t0)) * plotW);
+  const Y = (v) => padT + plotH - ((v - lo) / (hi - lo)) * plotH;
+  const color = css(cfg.color);
+
+  for (const g of [lo + (hi - lo) * 0.15, lo + (hi - lo) * 0.5, lo + (hi - lo) * 0.85]) {
+    el("line", { x1: padL, x2: W - padR, y1: Y(g), y2: Y(g), stroke: css("--grid"), "stroke-width": 1 }, svg);
+    txt(svg, padL - 7, Y(g) + 4, cfg.fmtTick(g), "tick", "end");
+  }
+
+  if (cfg.band) {
+    const b = cfg.band.filter((d) => d.lo != null && d.hi != null);
+    if (b.length > 1) {
+      const up = b.map((d) => `${X(d.t)},${Y(d.hi)}`).join("L");
+      const dn = b.slice().reverse().map((d) => `${X(d.t)},${Y(d.lo)}`).join("L");
+      el("path", { d: `M${up}L${dn}Z`, fill: color, "fill-opacity": 0.10 }, svg);
+    }
+  }
+
+  el("path", {
+    d: "M" + pts.map((p) => `${X(p.t)},${Y(p.v)}`).join("L"),
+    fill: "none", stroke: color, "stroke-width": 2,
+    "stroke-linejoin": "round", "stroke-linecap": "round",
+  }, svg);
+
+  const last = pts[pts.length - 1];
+  el("circle", { cx: X(last.t), cy: Y(last.v), r: 4, fill: color, stroke: css("--surface-1"), "stroke-width": 2 }, svg);
+  txt(svg, X(last.t) - 7, Y(last.v) - 9, cfg.fmtValue(last.v), "lbl-direct", "end");
+
+  txt(svg, padL, padT + plotH + 16, shortDate(new Date(t0)), "tick", "start");
+  txt(svg, W - padR, padT + plotH + 16, shortDate(new Date(t1)), "tick", "end");
+
+  // crosshair snaps to nearest x — the reader aims at a date, not a 2px line
+  const cross = el("line", { y1: padT, y2: padT + plotH, stroke: css("--axis"), "stroke-width": 1, opacity: 0 }, svg);
+  const dot = el("circle", { r: 4, fill: color, stroke: css("--surface-1"), "stroke-width": 2, opacity: 0 }, svg);
+  const overlay = el("rect", { x: padL, y: padT, width: plotW, height: plotH, fill: "transparent", tabindex: "0" }, svg);
+  const near = (clientX) => {
+    const r = svg.getBoundingClientRect();
+    const px = ((clientX - r.left) / r.width) * W;
+    let best = pts[0], bd = Infinity;
+    for (const p of pts) { const d = Math.abs(X(p.t) - px); if (d < bd) { bd = d; best = p; } }
+    return best;
+  };
+  const paint = (p, e) => {
+    cross.setAttribute("x1", X(p.t)); cross.setAttribute("x2", X(p.t)); cross.setAttribute("opacity", 1);
+    dot.setAttribute("cx", X(p.t)); dot.setAttribute("cy", Y(p.v)); dot.setAttribute("opacity", 1);
+    showTip(e, new Date(p.t).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }),
+      [{ color, value: cfg.fmtValue(p.v) + (cfg.unit ? " " + cfg.unit : ""), name: cfg.name }]);
+  };
+  overlay.addEventListener("pointermove", (e) => paint(near(e.clientX), e));
+  overlay.addEventListener("focus", () => {
+    const r = overlay.getBoundingClientRect();
+    paint(last, { clientX: r.right - 20, clientY: r.top + 20 });
+  });
+  overlay.addEventListener("pointerleave", () => { cross.setAttribute("opacity", 0); dot.setAttribute("opacity", 0); hideTip(); });
+  overlay.addEventListener("blur", () => { cross.setAttribute("opacity", 0); dot.setAttribute("opacity", 0); hideTip(); });
+}
+
+/* ---------------------------------------------------------- heatmap */
+function heatmap(host, view) {
+  host.replaceChildren();
+  const byDay = new Map();
+  for (const a of view.acts) byDay.set(a.date, (byDay.get(a.date) || 0) + (a.dur_s || 0) / 60);
+
+  const start = mondayOf(view.window.start);
+  const end = view.window.end;
+  const cols = Math.ceil((end - start) / 86400000 / 7) + 1;
+  const W = Math.max(320, host.clientWidth || 720);
+  const padL = 30, padT = 18;
+  const cell = clamp(Math.floor((W - padL - 6) / cols) - 2, 6, 15);
+  const step = cell + 2;                        // the 2px surface gap
+  const gridW = cols * step;
+  const H = padT + 7 * step + 22;
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img" }, host);
+  svg.setAttribute("aria-label", "Calendar of daily training minutes");
+
+  const vals = [...byDay.values()].filter((v) => v > 0).sort((a, b) => a - b);
+  const q = (f) => vals.length ? vals[Math.min(vals.length - 1, Math.floor(vals.length * f))] : 0;
+  const cuts = [q(0.2), q(0.4), q(0.6), q(0.8)];
+  const level = (v) => !v ? 0 : v <= cuts[0] ? 1 : v <= cuts[1] ? 2 : v <= cuts[2] ? 3 : v <= cuts[3] ? 4 : 5;
+
+  const cellsAt = [];
+  let lastMonth = -1, lastLabel = null;
+  for (let c = 0; c < cols; c++) {
+    for (let r = 0; r < 7; r++) {
+      const d = new Date(start); d.setDate(d.getDate() + c * 7 + r);
+      if (d < view.window.start || d > end) continue;
+      const key = dayKey(d), mins = byDay.get(key) || 0;
+      const x = padL + c * step, y = padT + r * step;
+      el("rect", { x, y, width: cell, height: cell, rx: 2, fill: css("--heat-" + level(mins)) }, svg);
+      cellsAt.push({ x, y, d, mins, key });
+      if (r === 0 && d.getMonth() !== lastMonth) {
+        lastMonth = d.getMonth();
+        // a month that gets only a column or two yields its label to the next
+        if (lastLabel && x - lastLabel.x < 30) lastLabel.t.remove();
+        lastLabel = { x, t: txt(svg, x, padT - 6, MONTHS[d.getMonth()], "tick", "start") };
+      }
+    }
+  }
+  ["Mon", "Wed", "Fri"].forEach((lab, i) => txt(svg, padL - 6, padT + (i * 2) * step + cell - 1, lab, "tick", "end"));
+
+  // nearest-cell layer: the pointer only has to be closest, not dead-centre
+  const grid = el("rect", { x: padL, y: padT, width: gridW, height: 7 * step, fill: "transparent" }, svg);
+  grid.addEventListener("pointermove", (e) => {
+    const r = svg.getBoundingClientRect();
+    const px = ((e.clientX - r.left) / r.width) * W, py = ((e.clientY - r.top) / r.height) * H;
+    let best = null, bd = Infinity;
+    for (const c of cellsAt) {
+      const d = Math.hypot(c.x + cell / 2 - px, c.y + cell / 2 - py);
+      if (d < bd) { bd = d; best = c; }
+    }
+    if (!best || bd > step * 1.6) return hideTip();
+    const list = view.acts.filter((a) => a.date === best.key);
+    const rows = list.length
+      ? list.map((a) => ({ color: css(SPORT_BY_KEY[a.sport].color), value: fmtDur(a.dur_s), name: a.name }))
+      : [{ color: null, value: "Rest", name: "no activity" }];
+    showTip(e, best.d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }), rows);
+  });
+  grid.addEventListener("pointerleave", hideTip);
+
+  // scale legend
+  const lx = W - 8 - 5 * step - 34;
+  txt(svg, lx - 6, H - 8, "Less", "tick", "end");
+  for (let i = 1; i <= 5; i++) el("rect", { x: lx + (i - 1) * step, y: H - 18, width: cell, height: cell, rx: 2, fill: css("--heat-" + i) }, svg);
+  txt(svg, lx + 5 * step + 2, H - 8, "More", "tick", "start");
+}
+
+/* ------------------------------------------------------- aggregation */
+/* Short ranges bucket by day — a 7-day window is one or two weekly columns,
+   which says nothing. Anything longer buckets by week. */
+function bucketRows(view, daily) {
+  const map = new Map();
+  const cur = daily ? new Date(view.window.start) : mondayOf(view.window.start);
+  while (cur <= view.window.end) {
+    map.set(dayKey(cur), {
+      t: new Date(cur), values: Object.fromEntries(SPORTS.map((s) => [s.key, 0])),
+      zones: { z1: 0, z2: 0, z3: 0, z4: 0, z5: 0 },
+      runZones: { z1: 0, z2: 0, z3: 0, z4: 0, z5: 0 },
+    });
+    cur.setDate(cur.getDate() + (daily ? 1 : 7));
+  }
+  for (const a of view.acts) {
+    const k = daily ? a.date : dayKey(mondayOf(parseDay(a.date)));
+    const row = map.get(k);
+    if (!row) continue;
+    row.values[a.sport] += (a.dur_s || 0) / 3600;
+    if (a.zones) for (let i = 0; i < 5; i++) {
+      row.zones["z" + (i + 1)] += (a.zones[i] || 0) / 3600;
+      // the 80/20 target is a running prescription, so the balance panel
+      // counts running time only
+      if (a.sport === "run") row.runZones["z" + (i + 1)] += (a.zones[i] || 0) / 3600;
+    }
+  }
+  return [...map.values()].map((r) => ({
+    label: daily
+      ? r.t.toLocaleDateString(undefined, { weekday: "short" })
+      : shortDate(r.t),
+    tipLabel: (daily ? "" : "Week of ") +
+      r.t.toLocaleDateString(undefined, { weekday: daily ? "long" : undefined, month: "short", day: "numeric", year: daily ? undefined : "numeric" }),
+    values: r.values, zones: r.zones, runZones: r.runZones, t: r.t,
+  }));
+}
+
+/* easy = zones 1-2, hard = 3-5; null when there was no running to measure */
+function easySplit(z) {
+  const easy = z.z1 + z.z2, hard = z.z3 + z.z4 + z.z5, total = easy + hard;
+  return { easy, hard, total, pct: total > 0 ? (easy / total) * 100 : null };
+}
+function easyShareOf(list) {
+  const z = { z1: 0, z2: 0, z3: 0, z4: 0, z5: 0 };
+  for (const a of list) {
+    if (a.sport !== "run" || !a.zones) continue;
+    for (let i = 0; i < 5; i++) z["z" + (i + 1)] += (a.zones[i] || 0) / 3600;
+  }
+  return easySplit(z);
+}
+
+/* Garmin still reports a "resting heart rate" on nights the watch wasn't worn,
+   derived from daytime lows -- it lands 20-40bpm high and swamps the real trend.
+   A night with no sleep record is the reliable marker for that, so those days are
+   excluded from the resting-HR average and line. Nothing is dropped from the
+   cache or the wellness table; the note under the panels states the rule. */
+const wornNights = (well) => well.filter((d) => d.sleep_s);
+
+const sum = (arr, f) => arr.reduce((s, x) => s + (f(x) || 0), 0);
+const avg = (arr, f) => { const v = arr.map(f).filter((x) => x != null && isFinite(x)); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+
+/* ------------------------------------------------------------ render */
+function renderKPIs(view) {
+  const hrs = sum(view.acts, (a) => a.dur_s) / 3600;
+  const prevHrs = sum(view.prevActs, (a) => a.dur_s) / 3600;
+  $("hero-label").textContent = `Training time · last ${view.span} days`;
+  $("hero-value").replaceChildren();
+  $("hero-value").append(fmtNum(hrs, 1), Object.assign(document.createElement("span"), { className: "unit", textContent: "hours" }));
+  const dh = hrs - prevHrs;
+  $("hero-delta").textContent = prevHrs
+    ? `${dh >= 0 ? "+" : "−"}${fmtNum(Math.abs(dh), 1)} h vs previous ${view.span} days`
+    : "";
+
+  const distOf = (list, key) => sum(list.filter((a) => a.sport === key), (a) => a.dist_m);
+  const tiles = [
+    { label: "Sessions", value: view.acts.length, prev: view.prevActs.length, dec: 0 },
+    { label: "Run distance", unit: "mi", value: distOf(view.acts, "run") / M_PER_MI, prev: distOf(view.prevActs, "run") / M_PER_MI, dec: 1 },
+    { label: "Bike distance", unit: "mi", value: distOf(view.acts, "bike") / M_PER_MI, prev: distOf(view.prevActs, "bike") / M_PER_MI, dec: 1 },
+    { label: "Swim distance", unit: "yd", value: distOf(view.acts, "swim") / M_PER_YD, prev: distOf(view.prevActs, "swim") / M_PER_YD, dec: 0 },
+    { label: "Easy share (target 80%)", unit: "%", value: easyShareOf(view.acts).pct, prev: easyShareOf(view.prevActs).pct, dec: 1, points: true },
+    { label: "VO₂ max", value: avg(view.well.slice(-7), (d) => d.vo2max_run), prev: avg(view.prevWell.slice(-7), (d) => d.vo2max_run), dec: 1, spark: view.well.map((d) => d.vo2max_run) },
+    { label: "Resting HR", unit: "bpm", value: avg(wornNights(view.well), (d) => d.resting_hr), prev: avg(wornNights(view.prevWell), (d) => d.resting_hr), dec: 0, lowerBetter: true, spark: wornNights(view.well).map((d) => d.resting_hr) },
+    { label: "HRV overnight", unit: "ms", value: avg(view.well, (d) => d.hrv_avg), prev: avg(view.prevWell, (d) => d.hrv_avg), dec: 0, spark: view.well.map((d) => d.hrv_avg) },
+    { label: "Sleep", unit: "h", value: avg(view.well, (d) => d.sleep_s == null ? null : d.sleep_s / 3600), prev: avg(view.prevWell, (d) => d.sleep_s == null ? null : d.sleep_s / 3600), dec: 1, spark: view.well.map((d) => d.sleep_s == null ? null : d.sleep_s / 3600) },
+  ];
+
+  const host = $("kpis");
+  host.replaceChildren();
+  for (const t of tiles) {
+    const card = document.createElement("div");
+    card.className = "kpi";
+    const l = document.createElement("div"); l.className = "label"; l.textContent = t.label;
+    const v = document.createElement("div"); v.className = "value";
+    v.append(t.value == null ? "—" : fmtNum(t.value, t.dec));
+    if (t.unit && t.value != null) v.append(Object.assign(document.createElement("span"), { className: "u", textContent: t.unit }));
+    const foot = document.createElement("div"); foot.className = "foot";
+    const d = document.createElement("span"); d.className = "delta";
+    if (t.value != null && t.prev != null && t.prev !== 0) {
+      const diff = t.value - t.prev;
+      const good = t.lowerBetter ? diff < 0 : diff > 0;
+      // a percentage metric moves in points, not in percent-of-a-percent
+      const mag = t.points ? Math.abs(diff) : (Math.abs(diff) / Math.abs(t.prev)) * 100;
+      if (mag >= 0.5) d.className = "delta " + (good ? "up" : "down");
+      d.textContent = `${diff >= 0 ? "+" : "−"}${fmtNum(mag, t.points ? 1 : 0)}${t.points ? " pts" : "%"}`;
+    }
+    foot.appendChild(d);
+    if (t.spark) {
+      const pts = t.spark.filter((x) => x != null && isFinite(x));
+      if (pts.length > 2) foot.appendChild(sparkline(pts.slice(-24)));
+    }
+    card.append(l, v, foot);
+    host.appendChild(card);
+  }
+}
+
+function sparkline(vals) {
+  const w = 54, h = 16;
+  const svg = document.createElementNS(SVGNS, "svg");
+  svg.setAttribute("class", "spark");
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  svg.setAttribute("width", w); svg.setAttribute("height", h);
+  svg.setAttribute("aria-hidden", "true");
+  const lo = Math.min(...vals), hi = Math.max(...vals), rng = hi - lo || 1;
+  const d = vals.map((v, i) => `${(i / (vals.length - 1)) * (w - 2) + 1},${h - 2 - ((v - lo) / rng) * (h - 4)}`).join("L");
+  el("path", { d: "M" + d, fill: "none", stroke: css("--axis"), "stroke-width": 1.5, "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+  return svg;
+}
+
+function renderLegend(host, items, shape) {
+  host.replaceChildren();
+  for (const it of items) {
+    const li = document.createElement("li");
+    const k = document.createElement("span");
+    k.className = shape === "line" ? "key-line" : "key-rect";
+    k.style.background = css(it.color);
+    const s = document.createElement("span");
+    s.textContent = it.label;
+    li.append(k, s);
+    host.appendChild(li);
+  }
+}
+
+function buildTable(host, cols, rows) {
+  host.replaceChildren();
+  const table = document.createElement("table");
+  const thead = document.createElement("thead");
+  const htr = document.createElement("tr");
+  for (const c of cols) {
+    const th = document.createElement("th");
+    th.textContent = c;
+    htr.appendChild(th);
+  }
+  thead.appendChild(htr);
+  const tbody = document.createElement("tbody");
+  for (const r of rows) {
+    const tr = document.createElement("tr");
+    for (const cell of r) {
+      const td = document.createElement("td");
+      td.textContent = cell;
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+  table.append(thead, tbody);
+  host.appendChild(table);
+}
+
+function renderSessions(view) {
+  const host = $("sessions-table");
+  host.replaceChildren();
+  $("sessions-sub").textContent = `${view.acts.length} session${view.acts.length === 1 ? "" : "s"} in range. Click a column to sort.`;
+  if (!view.acts.length) {
+    host.replaceChildren(Object.assign(document.createElement("p"), { className: "empty", textContent: "No sessions in this range." }));
+    return;
+  }
+  const cols = [
+    { k: "date", label: "Date", get: (a) => a.date, cell: (a) => a.date },
+    { k: "sport", label: "Sport", get: (a) => a.sport, cell: (a) => SPORT_BY_KEY[a.sport].label },
+    { k: "name", label: "Activity", get: (a) => a.name, cell: (a) => a.name },
+    { k: "dist", label: "Distance", get: (a) => a.dist_m || 0, cell: (a) => distCell(a) },
+    { k: "dur", label: "Time", get: (a) => a.dur_s || 0, cell: (a) => fmtDur(a.dur_s) },
+    { k: "pace", label: "Pace", get: (a) => paceVal(a) ?? 1e9, cell: (a) => paceCell(a) },
+    { k: "hr", label: "Avg HR", get: (a) => a.avg_hr || 0, cell: (a) => a.avg_hr ? Math.round(a.avg_hr) : "—" },
+    { k: "max", label: "Max HR", get: (a) => a.max_hr || 0, cell: (a) => a.max_hr ? Math.round(a.max_hr) : "—" },
+    { k: "te", label: "Aerobic TE", get: (a) => a.aerobic_te || 0, cell: (a) => a.aerobic_te ? a.aerobic_te.toFixed(1) : "—" },
+    { k: "cal", label: "Calories", get: (a) => a.cal || 0, cell: (a) => a.cal ? fmtNum(a.cal) : "—" },
+  ];
+  let sortKey = "date", sortDir = -1;
+
+  const table = document.createElement("table");
+  const thead = document.createElement("thead");
+  const htr = document.createElement("tr");
+  for (const c of cols) {
+    const th = document.createElement("th");
+    th.className = "sortable";
+    th.tabIndex = 0;
+    th.textContent = c.label;
+    const doSort = () => {
+      if (sortKey === c.k) sortDir = -sortDir; else { sortKey = c.k; sortDir = -1; }
+      paint();
+    };
+    th.addEventListener("click", doSort);
+    th.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); doSort(); } });
+    htr.appendChild(th);
+  }
+  thead.appendChild(htr);
+  const tbody = document.createElement("tbody");
+  table.append(thead, tbody);
+  host.appendChild(table);
+
+  function paint() {
+    const col = cols.find((c) => c.k === sortKey);
+    const sorted = view.acts.slice().sort((a, b) => {
+      const va = col.get(a), vb = col.get(b);
+      return (va < vb ? -1 : va > vb ? 1 : 0) * sortDir;
+    });
+    tbody.replaceChildren();
+    for (const a of sorted) {
+      const tr = document.createElement("tr");
+      cols.forEach((c, i) => {
+        const td = document.createElement("td");
+        if (c.k === "name") td.className = "name";
+        if (c.k === "sport") {
+          const dot = document.createElement("span");
+          dot.className = "sport-dot";
+          dot.style.background = css(SPORT_BY_KEY[a.sport].color);
+          td.append(dot, document.createTextNode(c.cell(a)));
+        } else {
+          td.textContent = c.cell(a);
+        }
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    }
+    [...htr.children].forEach((th, i) => {
+      th.textContent = cols[i].label + (cols[i].k === sortKey ? (sortDir === -1 ? "  ↓" : "  ↑") : "");
+    });
+  }
+  paint();
+}
+
+function distCell(a) {
+  if (!a.dist_m) return "—";
+  if (a.sport === "swim") return fmtNum(a.dist_m / M_PER_YD) + " yd";
+  return fmtNum(a.dist_m / M_PER_MI, 2) + " mi";
+}
+function paceVal(a) {
+  if (!a.dist_m || !a.dur_s) return null;
+  if (a.sport === "swim") return a.dur_s / (a.dist_m / M_PER_YD / 100);
+  if (a.sport === "bike") return -(a.dist_m / M_PER_MI) / (a.dur_s / 3600);   // sort fast-first like the others
+  return a.dur_s / (a.dist_m / M_PER_MI);
+}
+function paceCell(a) {
+  const v = paceVal(a);
+  if (v == null) return "—";
+  if (a.sport === "bike") return fmtNum(-v, 1) + " mph";
+  if (a.sport === "swim") return fmtPace(v) + " /100yd";
+  return fmtPace(v) + " /mi";
+}
+
+function render() {
+  const view = state.view = computeView(state.days);
+  const daily = view.span <= 21;
+  const rows = bucketRows(view, daily);
+  const bucket = daily ? "Daily" : "Weekly";
+  const bucketCol = daily ? "Day" : "Week of";
+
+  renderKPIs(view);
+
+  $("vol-title").textContent = `${bucket} volume by sport`;
+  $("vol-sub").textContent = daily
+    ? "Hours per day. Stacked to show total load and the mix inside it."
+    : "Hours per week, Monday-start. Stacked to show total load and the mix inside it.";
+  $("zone-title").textContent = `${bucket} time in heart-rate zones`;
+  // a one-column calendar says nothing the daily bars don't already say
+  $("cal-card").hidden = daily;
+
+  // a sport with nothing in range gets no legend row; hues stay bound to the
+  // sport, so a survivor is never repainted when the range changes
+  const active = SPORTS.filter((s) => rows.some((r) => r.values[s.key] > 0));
+  const shown = active.length ? active : SPORTS;
+
+  renderLegend($("vol-legend"), shown, "rect");
+  stackedColumns($("vol-chart"), {
+    rows, series: shown.map((s) => s.key),
+    colorOf: (k) => SPORT_BY_KEY[k].color,
+    labelOf: (k) => SPORT_BY_KEY[k].label,
+    fmtTick: (v) => fmtNum(v, v % 1 ? 1 : 0) + "h",
+    fmtValue: (v) => fmtNum(v, 1) + " h",
+    ariaLabel: `${bucket} training hours by sport`,
+  });
+  buildTable($("vol-table"), [bucketCol, ...shown.map((s) => s.label + " (h)"), "Total (h)"],
+    rows.map((r) => [r.t.toLocaleDateString(), ...shown.map((s) => fmtNum(r.values[s.key], 1)),
+      fmtNum(shown.reduce((a, s) => a + r.values[s.key], 0), 1)]));
+
+  if (!daily) heatmap($("cal-chart"), view);
+  const dayTotals = new Map();
+  for (const a of view.acts) dayTotals.set(a.date, (dayTotals.get(a.date) || 0) + (a.dur_s || 0) / 60);
+  buildTable($("cal-table"), ["Date", "Minutes", "Sessions"],
+    [...dayTotals.entries()].sort().reverse().map(([d, m]) =>
+      [d, fmtNum(m), String(view.acts.filter((a) => a.date === d).length)]));
+
+  const zoneRows = rows.map((r) => ({ label: r.label, tipLabel: r.tipLabel, values: r.zones }));
+  renderLegend($("zone-legend"), ZONES, "rect");
+  stackedColumns($("zone-chart"), {
+    rows: zoneRows, series: ZONES.map((z) => z.key),
+    colorOf: (k) => ZONES.find((z) => z.key === k).color,
+    labelOf: (k) => ZONES.find((z) => z.key === k).label,
+    fmtTick: (v) => fmtNum(v, v % 1 ? 1 : 0) + "h",
+    fmtValue: (v) => fmtDur(v * 3600),
+    ariaLabel: `${bucket} time in heart-rate zones`,
+  });
+  buildTable($("zone-table"), [bucketCol, ...ZONES.map((z) => z.label), "Total"],
+    zoneRows.map((r, i) => [rows[i].t.toLocaleDateString(), ...ZONES.map((z) => fmtDur(r.values[z.key] * 3600)),
+      fmtDur(ZONES.reduce((a, z) => a + r.values[z.key], 0) * 3600)]));
+
+  $("bal-title").textContent = `Intensity balance · ${bucket.toLowerCase()}`;
+  const balRows = rows.map((r) => {
+    const s = easySplit(r.runZones);
+    return { label: r.label, tipLabel: r.tipLabel, split: s, values: { easy: s.pct ?? 0 } };
+  });
+  stackedColumns($("bal-chart"), {
+    rows: balRows, series: ["easy"],
+    colorOf: () => "--intensity",
+    labelOf: () => "Easy",
+    scale: { max: 100, ticks: [0, 20, 40, 60, 80, 100] },
+    reference: { value: 80, label: "80% target" },
+    fmtTick: (v) => v + "%",
+    fmtValue: (v) => fmtNum(v, 0) + "%",
+    tipRows: (r) => r.split.total > 0 ? [
+      { color: css("--intensity"), value: fmtNum(r.split.pct, 0) + "%", name: "easy share" },
+      { color: null, value: fmtDur(r.split.easy * 3600), name: "zones 1–2" },
+      { color: null, value: fmtDur(r.split.hard * 3600), name: "zones 3–5" },
+    ] : [{ color: null, value: "—", name: "no running" }],
+    ariaLabel: "Share of running time spent easy, against the 80% target",
+  });
+
+  const overall = easyShareOf(view.acts);
+  const weeksAtTarget = balRows.filter((r) => r.split.pct != null && r.split.pct >= 80).length;
+  const weeksRun = balRows.filter((r) => r.split.total > 0).length;
+  $("bal-note").textContent = overall.total > 0
+    ? `${fmtNum(overall.pct, 1)}% of ${fmtNum(overall.total, 1)} running hours in this range was easy — ${fmtDur(overall.easy * 3600)} easy against ${fmtDur(overall.hard * 3600)} at zone 3 or above. ${weeksAtTarget} of ${weeksRun} ${daily ? "days" : "weeks"} with running hit the 80% target. Zone boundaries come from your Garmin profile, so this is only as accurate as the max heart rate set there — yours measures 187.`
+    : "No running with heart-rate data in this range.";
+  buildTable($("bal-table"), [bucketCol, "Easy (Z1–2)", "Hard (Z3–5)", "Total", "Easy share", "vs 80% target"],
+    balRows.map((r, i) => [rows[i].t.toLocaleDateString(),
+      fmtDur(r.split.easy * 3600), fmtDur(r.split.hard * 3600), fmtDur(r.split.total * 3600),
+      r.split.pct == null ? "—" : fmtNum(r.split.pct, 0) + "%",
+      r.split.pct == null ? "—" : (r.split.pct - 80 >= 0 ? "+" : "−") + fmtNum(Math.abs(r.split.pct - 80), 0) + " pts"]));
+
+  renderRace();
+  renderStrip(view);
+  renderACWR(view);
+  renderRunHR(view);
+  renderEF(view);
+  renderEasyPace(view);
+
+  renderSmalls(view);
+  buildTable($("well-table"), ["Date", "Overnight wear", "Resting HR", "HRV (ms)", "Sleep", "Sleep score", "VO₂ max", "Body Battery high"],
+    view.well.slice().reverse().map((d) => [d.date, d.sleep_s ? "yes" : "no", d.resting_hr ?? "—", d.hrv_avg ?? "—",
+      d.sleep_s ? fmtDur(d.sleep_s) : "—", d.sleep_score ?? "—", d.vo2max_run ?? "—", d.bb_high ?? "—"]));
+
+  renderSessions(view);
+}
+
+function renderSmalls(view) {
+  const host = $("smalls");
+  host.replaceChildren();
+  const T = (d) => parseDay(d.date).getTime();
+  const panels = [
+    { title: "VO₂ max", sub: "Estimated, running", color: "--sport-run", unit: "", dec: 1,
+      points: view.well.map((d) => ({ t: T(d), v: d.vo2max_run })) },
+    { title: "Resting heart rate", sub: "Nights the watch was worn", color: "--sport-bike", unit: "bpm", dec: 0,
+      points: wornNights(view.well).map((d) => ({ t: T(d), v: d.resting_hr })) },
+    { title: "Overnight HRV", sub: "Shaded band is your balanced range", color: "--sport-swim", unit: "ms", dec: 0,
+      points: view.well.map((d) => ({ t: T(d), v: d.hrv_avg })),
+      band: view.well.map((d) => ({ t: T(d), lo: d.hrv_baseline_low, hi: d.hrv_baseline_high })) },
+    { title: "Sleep", sub: "Hours per night", color: "--sport-other", unit: "h", dec: 1,
+      points: view.well.map((d) => ({ t: T(d), v: d.sleep_s == null ? null : d.sleep_s / 3600 })) },
+  ];
+  // every box goes into the grid first: a panel measures its width when it
+  // draws, and the column count only settles once all boxes exist
+  for (const p of panels) {
+    const box = document.createElement("div");
+    box.className = "small";
+    const h = document.createElement("h3"); h.textContent = p.title;
+    const s = document.createElement("p"); s.className = "sub"; s.textContent = p.sub;
+    p.host = document.createElement("div"); p.host.className = "chart";
+    box.append(h, s, p.host);
+    host.appendChild(box);
+  }
+  for (const p of panels) {
+    linePanel(p.host, {
+      points: p.points, band: p.band, color: p.color, name: p.title, unit: p.unit,
+      fmtTick: (v) => fmtNum(v, p.dec), fmtValue: (v) => fmtNum(v, p.dec),
+      ariaLabel: p.title + " over time",
+    });
+  }
+
+  const worn = wornNights(view.well).length, total = view.well.length;
+  const note = $("well-note");
+  note.textContent = total
+    ? `Overnight wear detected on ${worn} of ${total} days in range. Resting HR, HRV and sleep only exist for those nights — on the rest Garmin still reports a resting HR, but it is derived from daytime lows and runs well high, so it is left out of the average and the line above. Every day is still listed in the data table.`
+    : "No wellness data in this range.";
+}
+
+/* ---------------------------------------------------------- xy panel */
+/* Dots, lines, bands and threshold lines on a shared numeric or time x.
+   Hover snaps to the nearest dot if there are dots, else to the nearest x on
+   the first line. Faster-is-up axes (pace) pass yInvert. */
+function niceSpan(lo, hi, count) {
+  const raw = (hi - lo) / count || 1, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].find((m) => mag * m >= raw) * mag;
+  const ticks = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) ticks.push(+v.toFixed(6));
+  return ticks;
+}
+function xyPanel(host, cfg) {
+  host.replaceChildren();
+  const W = Math.max(cfg.minW || 320, host.clientWidth || 720);
+  // a wider right pad puts threshold labels in a gutter, clear of the marks
+  const padL = cfg.padL || 46, padR = cfg.padR || 16, padT = 14, plotH = cfg.plotH || 210, axisH = 30;
+  const H = padT + plotH + axisH;
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img" }, host);
+  svg.setAttribute("aria-label", cfg.ariaLabel);
+
+  const dots = cfg.dots || [], lines = cfg.lines || [], bands = cfg.bands || [];
+  const xs = [], ys = [];
+  dots.forEach((d) => { xs.push(d.x); ys.push(d.y); });
+  lines.forEach((l) => l.points.forEach((p) => { if (p.y != null) { xs.push(p.x); ys.push(p.y); } }));
+  bands.forEach((b) => b.points.forEach((p) => { xs.push(p.x); if (p.lo != null) ys.push(p.lo); if (p.hi != null) ys.push(p.hi); }));
+  (cfg.hlines || []).forEach((h) => ys.push(h.y));
+  (cfg.vlines || []).forEach((v) => xs.push(v.x));
+  if (!dots.length && !lines.some((l) => l.points.some((p) => p.y != null))) {
+    host.replaceChildren(Object.assign(document.createElement("p"), { className: "empty", textContent: cfg.emptyText || "Not enough data in this range." }));
+    return;
+  }
+  let x0 = cfg.xDomain ? cfg.xDomain[0] : Math.min(...xs), x1 = cfg.xDomain ? cfg.xDomain[1] : Math.max(...xs);
+  let lo = cfg.yDomain ? cfg.yDomain[0] : Math.min(...ys), hi = cfg.yDomain ? cfg.yDomain[1] : Math.max(...ys);
+  if (!cfg.yDomain) { const p = (hi - lo) * 0.12 || 1; lo -= p; hi += p; }
+  if (x1 === x0) { x0 -= 1; x1 += 1; }
+  if (!cfg.xDomain && cfg.xType !== "time") { const p = (x1 - x0) * 0.04; x0 -= p; x1 += p; }
+  const plotW = W - padL - padR;
+  const X = (x) => padL + ((x - x0) / (x1 - x0)) * plotW;
+  const Y = (v) => cfg.yInvert ? padT + ((v - lo) / (hi - lo)) * plotH : padT + plotH - ((v - lo) / (hi - lo)) * plotH;
+
+  for (const t of (cfg.yTicks || niceSpan(lo, hi, 4))) {
+    el("line", { x1: padL, x2: W - padR, y1: Y(t), y2: Y(t), stroke: css("--grid"), "stroke-width": 1 }, svg);
+    txt(svg, padL - 8, Y(t) + 4, cfg.fmtY(t), "tick", "end");
+  }
+  el("line", { x1: padL, x2: W - padR, y1: padT + plotH, y2: padT + plotH, stroke: css("--axis"), "stroke-width": 1 }, svg);
+  if (cfg.xType === "time") {
+    const n = Math.max(2, Math.min(6, Math.floor(plotW / 110)));
+    for (let i = 0; i < n; i++) {
+      const t = x0 + ((x1 - x0) * i) / (n - 1);
+      txt(svg, X(t), padT + plotH + 21, shortDate(new Date(t)), "tick", i === 0 ? "start" : i === n - 1 ? "end" : "middle");
+    }
+  } else {
+    for (const t of niceSpan(x0, x1, Math.floor(plotW / 80))) txt(svg, X(t), padT + plotH + 21, cfg.fmtX(t), "tick", "middle");
+  }
+
+  for (const b of bands) {
+    const pts = b.points.filter((p) => p.lo != null && p.hi != null);
+    if (pts.length < 2) continue;
+    const up = pts.map((p) => `${X(p.x)},${Y(p.hi)}`).join("L");
+    const dn = pts.slice().reverse().map((p) => `${X(p.x)},${Y(p.lo)}`).join("L");
+    el("path", { d: `M${up}L${dn}Z`, fill: css(b.color), "fill-opacity": 0.10 }, svg);
+  }
+  for (const h of cfg.hlines || []) {
+    el("line", { x1: padL, x2: W - padR, y1: Y(h.y), y2: Y(h.y), stroke: css("--text-secondary"), "stroke-width": 1 }, svg);
+    if (cfg.padR) txt(svg, W - padR + 6, Y(h.y) + 4, h.label, "lbl-direct", "start");
+    else txt(svg, W - padR, Y(h.y) - 6, h.label, "lbl-direct", "end");
+  }
+  for (const v of cfg.vlines || []) {
+    el("line", { x1: X(v.x), x2: X(v.x), y1: padT, y2: padT + plotH, stroke: css("--text-secondary"), "stroke-width": 1 }, svg);
+    txt(svg, X(v.x) + 6, padT + 10, v.label, "lbl-direct", "start");
+  }
+  for (const l of lines) {
+    let d = "", pen = false;
+    for (const p of l.points) {
+      if (p.y == null) { pen = false; continue; }
+      d += (pen ? "L" : "M") + `${X(p.x)},${Y(p.y)}`; pen = true;
+    }
+    el("path", { d, fill: "none", stroke: css(l.color), "stroke-width": l.width || 2,
+      "stroke-linejoin": "round", "stroke-linecap": "round", "stroke-dasharray": l.dash || "none" }, svg);
+  }
+  const surface = css("--surface-1");
+  for (const d of dots) {
+    const c = css(d.color);
+    el("circle", { cx: X(d.x), cy: Y(d.y), r: d.r || 4,
+      fill: d.hollow ? surface : c, "fill-opacity": d.hollow ? 1 : (d.opacity ?? 0.85),
+      stroke: d.hollow ? c : surface, "stroke-width": d.hollow ? 2 : 1.5 }, svg);
+  }
+
+  // hover
+  const cross = el("line", { y1: padT, y2: padT + plotH, stroke: css("--axis"), "stroke-width": 1, opacity: 0, "pointer-events": "none" }, svg);
+  const ring = el("circle", { r: 7, fill: "none", stroke: css("--text-primary"), "stroke-width": 1.5, opacity: 0, "pointer-events": "none" }, svg);
+  const overlay = el("rect", { x: padL, y: padT, width: plotW, height: plotH, fill: "transparent", tabindex: "0" }, svg);
+  const clear = () => { cross.setAttribute("opacity", 0); ring.setAttribute("opacity", 0); hideTip(); };
+  const toLocal = (e) => { const r = svg.getBoundingClientRect(); return [((e.clientX - r.left) / r.width) * W, ((e.clientY - r.top) / r.height) * H]; };
+  const paint = (e) => {
+    const [px, py] = toLocal(e);
+    if (dots.length) {
+      let best = null, bd = Infinity;
+      for (const d of dots) { const dd = Math.hypot(X(d.x) - px, Y(d.y) - py); if (dd < bd) { bd = dd; best = d; } }
+      if (!best || bd > 30) return clear();
+      ring.setAttribute("cx", X(best.x)); ring.setAttribute("cy", Y(best.y)); ring.setAttribute("opacity", 1);
+      const t = cfg.tip(best); showTip(e, t.head, t.rows);
+    } else {
+      const pts = lines[0].points.filter((p) => p.y != null);
+      let best = pts[0], bd = Infinity;
+      for (const p of pts) { const dd = Math.abs(X(p.x) - px); if (dd < bd) { bd = dd; best = p; } }
+      cross.setAttribute("x1", X(best.x)); cross.setAttribute("x2", X(best.x)); cross.setAttribute("opacity", 1);
+      ring.setAttribute("cx", X(best.x)); ring.setAttribute("cy", Y(best.y)); ring.setAttribute("opacity", 1);
+      const t = cfg.tipAt(best.x); showTip(e, t.head, t.rows);
+    }
+  };
+  overlay.addEventListener("pointermove", paint);
+  overlay.addEventListener("pointerleave", clear);
+  overlay.addEventListener("focus", () => {
+    const r = overlay.getBoundingClientRect();
+    const last = dots.length ? dots[dots.length - 1] : lines[0].points.filter((p) => p.y != null).pop();
+    const e = { clientX: r.left + ((X(last.x) - padL) / plotW) * r.width, clientY: r.top + ((Y(last.y) - padT) / plotH) * r.height };
+    paint(e);
+  });
+  overlay.addEventListener("blur", clear);
+}
+
+/* ------------------------------------------------------- race target */
+const GOAL = DATA.goal || {};
+const RACE_DAY = GOAL.date ? parseDay(GOAL.date) : null;
+const GOAL_S = GOAL.goal_time_s || 6900;
+const HM_MI = (GOAL.distance_m || 21097.5) / M_PER_MI;
+const GOAL_PACE = GOAL_S / HM_MI;                 // seconds per mile
+const EASY_HR = GOAL.easy_hr_max || 152;
+const LONG_MI = GOAL.long_run_mi || 12;
+const TODAY = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })();
+
+const PRED = DATA.predictions || {};
+const predDates = Object.keys(PRED).filter((d) => PRED[d] && PRED[d].hm_s).sort();
+
+const runsAll = acts.filter((a) => a.sport === "run" && a.dist_m > 0 && a.dur_s > 0);
+const milesOf = (a) => a.dist_m / M_PER_MI;
+const paceOf = (a) => a.dur_s / milesOf(a);
+const efOf = (a) => a.speed && a.avg_hr ? (a.speed * 60) / a.avg_hr : null;   // metres per beat
+const dominantZone = (a) => a.zones ? a.zones.indexOf(Math.max(...a.zones)) : -1;
+const daysBetween = (a, b) => Math.round((b - a) / 86400000);
+const fmtClock = (s) => { const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = Math.round(s % 60); return `${h}:${String(m).padStart(2, "0")}:${String(x).padStart(2, "0")}`; };
+const fmtSigned = (s) => (s >= 0 ? "+" : "−") + fmtPace(Math.abs(s));   // m:ss, either side of zero
+const longDate = (dt) => dt.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+
+function kpiTile(host, label, value, unit, ctx, delta) {
+  const card = document.createElement("div"); card.className = "kpi";
+  const l = document.createElement("div"); l.className = "label"; l.textContent = label;
+  const v = document.createElement("div"); v.className = "value"; v.append(value);
+  if (unit) v.append(Object.assign(document.createElement("span"), { className: "u", textContent: unit }));
+  const foot = document.createElement("div"); foot.className = "foot";
+  if (delta) foot.append(Object.assign(document.createElement("span"), { className: "delta " + (delta.cls || ""), textContent: delta.text }));
+  if (ctx) foot.append(Object.assign(document.createElement("span"), { className: "ctx", textContent: ctx }));
+  card.append(l, v, foot);
+  host.appendChild(card);
+}
+
+/* The race section reads full history: the 90-day default would hide every
+   half-distance effort from the spring. */
+function renderRace() {
+  const host = $("race-kpis");
+  host.replaceChildren();
+  $("race-title").textContent = GOAL.name || "Race";
+  if (!RACE_DAY) {
+    $("race-when").textContent = "";
+    $("race-sub").textContent = "Add data/goal.json with a race date and goal time to enable this section.";
+    return;
+  }
+  const daysTo = daysBetween(TODAY, RACE_DAY);
+  $("race-when").textContent = RACE_DAY.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  $("race-sub").textContent = `Goal ${fmtClock(GOAL_S)} over ${fmtNum(HM_MI, 1)} miles — ${fmtPace(GOAL_PACE)} per mile.`;
+
+  const longRuns = runsAll.filter((a) => milesOf(a) >= LONG_MI);
+  const best = longRuns.length ? longRuns.reduce((b, a) => paceOf(a) < paceOf(b) ? a : b) : null;
+  const projected = best ? paceOf(best) * HM_MI : null;
+  const lastLong = longRuns.length ? longRuns[longRuns.length - 1] : null;
+  const since28 = new Date(TODAY); since28.setDate(since28.getDate() - 27);
+  const since56 = new Date(TODAY); since56.setDate(since56.getDate() - 55);
+  const recent = runsAll.filter((a) => parseDay(a.date) >= since28);
+  const longest28 = recent.length ? recent.reduce((b, a) => milesOf(a) > milesOf(b) ? a : b) : null;
+  const atGoal = runsAll.filter((a) => parseDay(a.date) >= since56 && milesOf(a) >= 3 && paceOf(a) <= GOAL_PACE);
+  const atGoalLongest = atGoal.length ? Math.max(...atGoal.map(milesOf)) : null;
+
+  kpiTile(host, daysTo >= 0 ? "Days to race" : "Days since race", String(Math.abs(daysTo)), "", daysTo >= 0 ? `${fmtNum(daysTo / 7, 1)} weeks` : "");
+  kpiTile(host, "Goal", fmtClock(GOAL_S), "", `${fmtPace(GOAL_PACE)} /mi`);
+  const latestPred = predDates.length ? PRED[predDates[predDates.length - 1]] : null;
+  kpiTile(host, "Garmin predicts", latestPred ? fmtClock(latestPred.hm_s) : "—", "",
+    latestPred ? `${fmtPace(latestPred.hm_s / HM_MI)} /mi · as of ${shortDate(parseDay(predDates[predDates.length - 1]))}` : "run garmin_pull.py",
+    latestPred ? { text: fmtSigned(latestPred.hm_s - GOAL_S) + " vs goal", cls: latestPred.hm_s <= GOAL_S ? "up" : "down" } : null);
+  kpiTile(host, "Best long run, projected", projected ? fmtClock(projected) : "—", "",
+    best ? `${fmtPace(paceOf(best))} /mi · ${shortDate(parseDay(best.date))}` : "no long runs yet",
+    projected ? { text: fmtSigned(projected - GOAL_S) + " vs goal", cls: projected <= GOAL_S ? "up" : "down" } : null);
+  kpiTile(host, "Longest run · 4 wk", longest28 ? fmtNum(milesOf(longest28), 1) : "—", longest28 ? "mi" : "",
+    longest28 ? `${fmtPace(paceOf(longest28))} /mi · ${shortDate(parseDay(longest28.date))}` : "");
+  kpiTile(host, `Weeks since ≥${LONG_MI} mi`, lastLong ? fmtNum(daysBetween(parseDay(lastLong.date), TODAY) / 7, 1) : "—", "",
+    lastLong ? `${fmtNum(milesOf(lastLong), 1)} mi on ${shortDate(parseDay(lastLong.date))}` : "");
+  kpiTile(host, "Goal-pace runs · 8 wk", String(atGoal.length), "",
+    atGoalLongest ? `longest ${fmtNum(atGoalLongest, 1)} mi at ≤${fmtPace(GOAL_PACE)}` : "none of 3 mi or more");
+  $("race-note").textContent = `Projected finish = pace of the run × ${fmtNum(HM_MI, 1)} mi. Goal pace, long-run threshold (${LONG_MI} mi) and easy-HR ceiling (${EASY_HR} bpm) are set in data/goal.json.`;
+
+  renderPrediction(longRuns);
+  renderRamp(daysTo);
+  renderFrontier();
+  renderEffortLog(longRuns);
+  renderLongRun();
+}
+
+/* Garmin's predictor is VO2max-driven and tends to run ahead of what a
+   runner has actually held over the distance; showing both on one axis
+   makes that gap visible rather than leaving the reader to trust either. */
+function renderPrediction(longRuns) {
+  const pts = predDates.map((d) => ({ x: parseDay(d).getTime(), y: PRED[d].hm_s, d }));
+  const efforts = longRuns.map((a) => ({ x: T(a), y: paceOf(a) * HM_MI, color: "--sport-run", a }));
+  renderLegend($("pred-legend"), [{ label: "Garmin half-marathon prediction", color: "--intensity" }, { label: "Long run, projected to 13.1", color: "--sport-run" }], "rect");
+  $("pred-legend").firstChild.firstChild.className = "key-line";
+  $("pred-legend").lastChild.firstChild.className = "key-dot";
+  if (!pts.length) {
+    $("pred-chart").replaceChildren(Object.assign(document.createElement("p"), { className: "empty", textContent: "No predictions cached yet — run garmin_pull.py." }));
+    $("pred-note").textContent = "";
+    buildTable($("pred-table"), ["Date", "5K", "10K", "Half", "Marathon"], []);
+    return;
+  }
+  const byT = new Map(pts.map((p) => [p.x, p]));
+  const allY = pts.map((p) => p.y).concat(efforts.map((e) => e.y), [GOAL_S]);
+  xyPanel($("pred-chart"), {
+    xType: "time", yInvert: true, padL: 56,
+    xDomain: [Math.min(pts[0].x, ...efforts.map((e) => e.x)), Math.max(pts[pts.length - 1].x, TODAY.getTime())],
+    yDomain: [Math.min(...allY) - 180, Math.max(...allY) + 180],
+    // finish times tick on 5-minute marks, not on round numbers of seconds
+    yTicks: (() => { const lo = Math.min(...allY) - 180, hi = Math.max(...allY) + 180, t = []; for (let v = Math.ceil(lo / 300) * 300; v <= hi; v += 300) t.push(v); return t; })(),
+    lines: [{ points: pts, color: "--intensity" }],
+    dots: efforts,
+    hlines: [{ y: GOAL_S, label: `goal ${fmtClock(GOAL_S)}` }],
+    fmtY: (v) => fmtClock(v).replace(/:\d\d$/, ""), fmtX: () => "",
+    tip: (e) => {
+      const key = dayKey(parseDay(e.a.date)), p = PRED[key];
+      return { head: `${longDate(parseDay(e.a.date))} · ${e.a.name}`, rows: [
+        { color: css("--sport-run"), value: fmtClock(e.y), name: "projected from run" },
+        { color: css("--intensity"), value: p ? fmtClock(p.hm_s) : "—", name: "Garmin predicted that day" },
+        { color: null, value: fmtPace(paceOf(e.a)) + " /mi", name: `${fmtNum(milesOf(e.a), 1)} mi` },
+      ] };
+    },
+    ariaLabel: "Garmin's half-marathon prediction over time against the goal and actual long-run projections",
+  });
+  const first = pts[0], last = pts[pts.length - 1];
+  const gaps = efforts.map((e) => { const p = PRED[dayKey(parseDay(e.a.date))]; return p ? e.y - p.hm_s : null; }).filter((g) => g != null);
+  const meanGap = gaps.length ? gaps.reduce((s, g) => s + g, 0) / gaps.length : null;
+  $("pred-note").textContent = `Garmin predicts ${fmtClock(last.y)} today (${fmtSigned(last.y - GOAL_S)} vs goal), from ${fmtClock(first.y)} on ${shortDate(new Date(first.x))}. ` +
+    (meanGap != null ? `On the ${gaps.length} days you ran ${LONG_MI}+ miles, the run projected ${fmtSigned(meanGap)} slower than the predictor said on average — the predictor assumes race-day effort, a taper and cool conditions, and none of those long runs were races.` : "") +
+    " The prediction is Garmin's, driven by VO₂ max and recent training; it is the only training-status number the Forerunner 165 produces.";
+  buildTable($("pred-table"), ["Date", "5K", "10K", "Half", "Half vs goal", "Marathon"],
+    predDates.slice().reverse().map((d) => { const p = PRED[d]; return [d, fmtClock(p["5k_s"]), fmtClock(p["10k_s"]), fmtClock(p.hm_s), fmtSigned(p.hm_s - GOAL_S), fmtClock(p.marathon_s)]; }));
+}
+
+function renderRamp(daysTo) {
+  const raceMon = mondayOf(RACE_DAY);
+  const thisMon = mondayOf(TODAY);
+  const first = new Date(raceMon); first.setDate(first.getDate() - 7 * 16);
+  const rows = [];
+  for (let d = new Date(first); d <= raceMon; d.setDate(d.getDate() + 7)) rows.push({ t: new Date(d), miles: 0, runs: 0 });
+  const byKey = new Map(rows.map((r) => [dayKey(r.t), r]));
+  for (const a of runsAll) { const r = byKey.get(dayKey(mondayOf(parseDay(a.date)))); if (r) { r.miles += milesOf(a); r.runs++; } }
+
+  // suggested taper: the last four complete weeks set the base
+  const complete = rows.filter((r) => r.t < thisMon && r.miles > 0).slice(-4);
+  const base = complete.length ? complete.reduce((s, r) => s + r.miles, 0) / complete.length : null;
+  const planFor = (wk) => base == null ? null : wk >= 3 ? base : wk === 2 ? base * 0.75 : wk === 1 ? base * 0.55 : base * 0.3 + HM_MI;
+  rows.forEach((r) => {
+    r.wk = Math.round((raceMon - r.t) / 604800000);
+    r.future = r.t > thisMon;
+    r.current = dayKey(r.t) === dayKey(thisMon);
+    r.plan = daysTo >= 0 && r.t >= thisMon ? planFor(r.wk) : null;
+    r.label = r.wk === 0 ? "Race" : `${r.wk}w`;
+    r.tipLabel = `Week of ${r.t.toLocaleDateString(undefined, { month: "short", day: "numeric" })} · ${r.wk === 0 ? "race week" : r.wk + " weeks out"}${r.current ? " (in progress)" : ""}`;
+    r.values = { miles: r.miles };
+  });
+  renderLegend($("ramp-legend"), [{ label: "Run miles", color: "--sport-run" }, { label: "Suggested taper", color: "--intensity" }], "rect");
+  $("ramp-legend").lastChild.firstChild.className = "key-line";
+  stackedColumns($("ramp-chart"), {
+    rows, series: ["miles"], colorOf: () => "--sport-run", labelOf: () => "Run miles",
+    fmtTick: (v) => fmtNum(v, 0) + " mi", fmtValue: (v) => fmtNum(v, 1) + " mi",
+    overlay: { values: rows.map((r) => r.plan), color: "--intensity", label: "plan" },
+    tipRows: (r) => {
+      const out = [{ color: css("--sport-run"), value: fmtNum(r.miles, 1) + " mi", name: `${r.runs} run${r.runs === 1 ? "" : "s"}` }];
+      if (r.plan != null) out.push({ color: css("--intensity"), value: fmtNum(r.plan, 1) + " mi", name: r.wk === 0 ? "plan incl. race" : "plan" });
+      return out;
+    },
+    ariaLabel: "Weekly running miles counting down to race day, with a suggested taper",
+  });
+  const cur = rows.find((r) => r.current);
+  $("ramp-note").textContent = base == null
+    ? "Not enough completed weeks to suggest a taper."
+    : `Base is ${fmtNum(base, 1)} mi/week, the average of your last ${complete.length} complete running weeks. Taper: hold the base to 3 weeks out, then 75%, 55%, and an easy race week (30% plus the race). This week so far: ${fmtNum(cur ? cur.miles : 0, 1)} mi.`;
+  buildTable($("ramp-table"), ["Week of", "Weeks to race", "Runs", "Miles", "Plan (mi)"],
+    rows.map((r) => [r.t.toLocaleDateString(), r.wk === 0 ? "race" : String(r.wk), String(r.runs), fmtNum(r.miles, 1), r.plan == null ? "—" : fmtNum(r.plan, 1)]));
+}
+
+function renderFrontier() {
+  const runs = runsAll.filter((a) => milesOf(a) >= 1);
+  // frontier: a run is on it when no longer run was faster
+  const byDist = runs.slice().sort((a, b) => milesOf(b) - milesOf(a));
+  let bestPace = Infinity; const onFrontier = new Set();
+  for (const a of byDist) { if (paceOf(a) < bestPace) { bestPace = paceOf(a); onFrontier.add(a); } }
+  const frontier = [...onFrontier].sort((a, b) => milesOf(a) - milesOf(b));
+  // step line: pace is held from each frontier run down to the next shorter one
+  const step = [];
+  frontier.forEach((a, i) => {
+    const prevX = i === 0 ? 0 : milesOf(frontier[i - 1]);
+    step.push({ x: prevX, y: paceOf(a) }, { x: milesOf(a), y: paceOf(a) });
+  });
+  const atHM = frontier.filter((a) => milesOf(a) >= HM_MI * 0.98);
+  const bestHM = atHM.length ? atHM[0] : null;
+  const maxX = Math.max(HM_MI + 0.5, ...runs.map(milesOf));
+
+  // Garmin's current predictions as paces at their distances; the marathon
+  // sits off the right edge, so only 5K / 10K / half are drawn
+  const latest = predDates.length ? PRED[predDates[predDates.length - 1]] : null;
+  const predPts = latest ? [
+    { x: 5000 / M_PER_MI, y: latest["5k_s"] / (5000 / M_PER_MI), label: "5K" },
+    { x: 10000 / M_PER_MI, y: latest["10k_s"] / (10000 / M_PER_MI), label: "10K" },
+    { x: HM_MI, y: latest.hm_s / HM_MI, label: "Half" },
+  ].filter((p) => p.y) : [];
+
+  // run-derived marks in run blue; Garmin's predictor keeps the purple it has elsewhere
+  renderLegend($("frontier-legend"), [
+    { label: "Run", color: "--sport-run" }, { label: "Best pace at distance", color: "--sport-run" },
+    ...(predPts.length ? [{ label: `Garmin predictor · ${shortDate(parseDay(predDates[predDates.length - 1]))}`, color: "--intensity" }] : []),
+  ], "rect");
+  [...$("frontier-legend").children].forEach((li, i) => { li.firstChild.className = i === 0 ? "key-dot" : "key-line"; });
+  xyPanel($("frontier-chart"), {
+    xType: "num", xDomain: [0, maxX], yInvert: true, padR: 92,
+    dots: runs.map((a) => ({ x: milesOf(a), y: paceOf(a), color: "--sport-run", opacity: onFrontier.has(a) ? 0.95 : 0.35, a }))
+      .concat(predPts.map((p) => ({ x: p.x, y: p.y, color: "--intensity", hollow: true, r: 5, pred: p }))),
+    lines: [{ points: step, color: "--sport-run", width: 2 }]
+      .concat(predPts.length > 1 ? [{ points: predPts, color: "--intensity", width: 2, dash: "5 4" }] : []),
+    hlines: [{ y: GOAL_PACE, label: `goal ${fmtPace(GOAL_PACE)} /mi` }],
+    vlines: [{ x: HM_MI, label: `${fmtNum(HM_MI, 1)} mi` }],
+    fmtX: (v) => fmtNum(v, 0) + " mi", fmtY: (v) => fmtPace(v),
+    tip: (d) => d.pred ? { head: `Garmin predictor · ${d.pred.label}`, rows: [
+      { color: css("--intensity"), value: fmtPace(d.y) + " /mi", name: "predicted pace" },
+      { color: null, value: fmtClock(d.y * d.x), name: "predicted time" },
+      { color: null, value: fmtNum(d.x, 2) + " mi", name: "distance" },
+    ] } : { head: `${longDate(parseDay(d.a.date))} · ${d.a.name}`, rows: [
+      { color: css("--sport-run"), value: fmtPace(d.y) + " /mi", name: "pace" },
+      { color: null, value: fmtNum(d.x, 2) + " mi", name: "distance" },
+      { color: null, value: d.a.avg_hr ? Math.round(d.a.avg_hr) + " bpm" : "—", name: "avg HR" },
+      { color: null, value: onFrontier.has(d.a) ? "yes" : "no", name: "on frontier" },
+    ] },
+    ariaLabel: "Pace against distance for every run, with the best-pace frontier, Garmin's predicted paces and the goal pace",
+  });
+  const predHM = predPts.find((p) => p.label === "Half");
+  $("frontier-note").textContent = (bestHM
+    ? `Fastest pace held over race distance: ${fmtPace(paceOf(bestHM))} /mi on ${shortDate(parseDay(bestHM.date))} — ${fmtNum(Math.abs(paceOf(bestHM) - GOAL_PACE), 0)} s/mi ${paceOf(bestHM) > GOAL_PACE ? "slower" : "faster"} than goal. ${frontier.filter((a) => paceOf(a) <= GOAL_PACE).length ? `Goal pace has been held out to ${fmtNum(milesOf(frontier.filter((a) => paceOf(a) <= GOAL_PACE).pop()), 1)} mi.` : "Goal pace has not yet been held over 1 mile or more."}`
+    : "No run at race distance yet.") +
+    (predHM && bestHM ? ` Garmin's predictor puts the half at ${fmtPace(predHM.y)} /mi, ${fmtNum(Math.abs(paceOf(bestHM) - predHM.y), 0)} s/mi ${predHM.y < paceOf(bestHM) ? "faster" : "slower"} than you have held over the distance; its marathon prediction sits beyond the right edge.` : "");
+  buildTable($("frontier-table"), ["Date", "Activity", "Distance", "Pace", "Avg HR", "On frontier"],
+    runs.slice().reverse().map((a) => [a.date, a.name, fmtNum(milesOf(a), 2) + " mi", fmtPace(paceOf(a)), a.avg_hr ? String(Math.round(a.avg_hr)) : "—", onFrontier.has(a) ? "yes" : ""]));
+}
+
+function renderEffortLog(longRuns) {
+  $("effort-title").textContent = `Half-marathon efforts · runs of ${LONG_MI} mi or more`;
+  const rows = longRuns.map((a) => ({
+    a, label: shortDate(parseDay(a.date)), tipLabel: `${longDate(parseDay(a.date))} · ${a.name}`,
+    proj: paceOf(a) * HM_MI, values: { proj: (paceOf(a) * HM_MI) / 60 },
+    pred: (PRED[a.date] || {}).hm_s || null,          // Garmin's half prediction on the day
+  }));
+  const anyPred = rows.some((r) => r.pred);
+  renderLegend($("effort-legend"), [{ label: "Projected finish", color: "--sport-run" }]
+    .concat(anyPred ? [{ label: "Garmin predictor that day", color: "--intensity" }] : []), "rect");
+  if (anyPred) $("effort-legend").lastChild.firstChild.className = "key-line";
+  stackedColumns($("effort-chart"), {
+    rows, series: ["proj"], colorOf: () => "--sport-run", labelOf: () => "Projected finish",
+    scale: (() => { const m = Math.max(GOAL_S / 60, ...rows.map((r) => r.values.proj)); const top = Math.ceil((m + 10) / 15) * 15; const t = []; for (let v = 0; v <= top; v += 30) t.push(v); return { max: top, ticks: t }; })(),
+    reference: { value: GOAL_S / 60, label: `goal ${fmtClock(GOAL_S)}` }, padR: 86,
+    overlay: anyPred ? { values: rows.map((r) => r.pred ? r.pred / 60 : null), color: "--intensity" } : null,
+    fmtTick: (v) => fmtClock(v * 60).replace(/:00$/, ""), fmtValue: (v) => fmtClock(v * 60),
+    barLabel: (r) => fmtClock(r.proj),
+    tipRows: (r) => [
+      { color: css("--sport-run"), value: fmtClock(r.proj), name: "projected" },
+      { color: null, value: fmtSigned(r.proj - GOAL_S), name: "vs goal" },
+      ...(r.pred ? [{ color: css("--intensity"), value: fmtClock(r.pred), name: "Garmin predicted" },
+                    { color: null, value: fmtSigned(r.proj - r.pred), name: "run vs predictor" }] : []),
+      { color: null, value: fmtPace(paceOf(r.a)) + " /mi", name: "pace" },
+      { color: null, value: fmtNum(milesOf(r.a), 2) + " mi", name: "actual distance" },
+      { color: null, value: r.a.avg_hr ? Math.round(r.a.avg_hr) + " bpm" : "—", name: "avg HR" },
+    ],
+    ariaLabel: "Projected half-marathon finish for each long run against the goal time and Garmin's prediction that day",
+  });
+  const best = rows.length ? rows.reduce((b, r) => r.proj < b.proj ? r : b) : null;
+  const withPred = rows.filter((r) => r.pred);
+  const meanGap = withPred.length ? withPred.reduce((s, r) => s + (r.proj - r.pred), 0) / withPred.length : null;
+  const closest = withPred.length ? withPred.reduce((b, r) => Math.abs(r.proj - r.pred) < Math.abs(b.proj - b.pred) ? r : b) : null;
+  $("effort-note").textContent = best
+    ? `${rows.length} run${rows.length === 1 ? "" : "s"} of ${LONG_MI} mi or more. Best projection ${fmtClock(best.proj)} on ${best.label} (${fmtSigned(best.proj - GOAL_S)} vs goal). Most recent: ${fmtClock(rows[rows.length - 1].proj)} on ${rows[rows.length - 1].label}.` +
+      (meanGap != null ? ` The runs came in ${fmtSigned(meanGap)} ${meanGap >= 0 ? "slower" : "faster"} than the predictor on average; the closest was ${closest.label} (${fmtSigned(closest.proj - closest.pred)}). ${withPred.filter((r) => r.proj <= r.pred).length} of ${withPred.length} matched or beat it.` : "")
+    : `No runs of ${LONG_MI} mi or more yet.`;
+  buildTable($("effort-table"), ["Date", "Activity", "Distance", "Time", "Pace", "Avg HR", "Projected 13.1", "vs goal", "Garmin predicted", "Run vs predictor"],
+    rows.slice().reverse().map((r) => [r.a.date, r.a.name, fmtNum(milesOf(r.a), 2) + " mi", fmtDur(r.a.dur_s), fmtPace(paceOf(r.a)), r.a.avg_hr ? String(Math.round(r.a.avg_hr)) : "—", fmtClock(r.proj), fmtSigned(r.proj - GOAL_S),
+      r.pred ? fmtClock(r.pred) : "—", r.pred ? fmtSigned(r.proj - r.pred) : "—"]));
+}
+
+function renderLongRun() {
+  if (!runsAll.length) return;
+  const raceMon = mondayOf(RACE_DAY);
+  const start = mondayOf(parseDay(runsAll[0].date));
+  const end = raceMon > TODAY ? raceMon : mondayOf(TODAY);
+  const rows = [];
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 7)) rows.push({ t: new Date(d), longest: null });
+  const byKey = new Map(rows.map((r) => [dayKey(r.t), r]));
+  for (const a of runsAll) { const r = byKey.get(dayKey(mondayOf(parseDay(a.date)))); if (r && (!r.longest || milesOf(a) > milesOf(r.longest))) r.longest = a; }
+  rows.forEach((r) => {
+    r.label = shortDate(r.t);
+    r.tipLabel = "Week of " + r.t.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    r.values = { longest: r.longest ? milesOf(r.longest) : 0 };
+  });
+  stackedColumns($("longrun-chart"), {
+    rows, series: ["longest"], colorOf: () => "--sport-run", labelOf: () => "Longest run",
+    reference: { value: HM_MI, label: `race ${fmtNum(HM_MI, 1)} mi` },
+    fmtTick: (v) => fmtNum(v, 0) + " mi", fmtValue: (v) => fmtNum(v, 1) + " mi",
+    tipRows: (r) => r.longest ? [
+      { color: css("--sport-run"), value: fmtNum(milesOf(r.longest), 2) + " mi", name: "longest run" },
+      { color: null, value: fmtPace(paceOf(r.longest)) + " /mi", name: "pace" },
+      { color: null, value: r.longest.avg_hr ? Math.round(r.longest.avg_hr) + " bpm" : "—", name: "avg HR" },
+    ] : [{ color: null, value: "—", name: r.t > TODAY ? "upcoming" : "no running" }],
+    ariaLabel: "Longest run each week against race distance",
+  });
+  const longWeeks = rows.filter((r) => r.longest && milesOf(r.longest) >= LONG_MI);
+  const last = longWeeks.length ? longWeeks[longWeeks.length - 1] : null;
+  const weeksTo = Math.round((raceMon - mondayOf(TODAY)) / 604800000);
+  $("longrun-note").textContent = (last
+    ? `${longWeeks.length} weeks with a run of ${LONG_MI} mi or more; the last was the week of ${shortDate(last.t)} (${fmtNum(milesOf(last.longest), 1)} mi), ${Math.round((mondayOf(TODAY) - last.t) / 604800000)} weeks ago. `
+    : `No week has had a run of ${LONG_MI} mi or more. `) + (weeksTo >= 0 ? `Race week is ${weeksTo} week${weeksTo === 1 ? "" : "s"} away.` : "");
+  buildTable($("longrun-table"), ["Week of", "Longest run", "Pace", "Avg HR", "Activity"],
+    rows.slice().reverse().map((r) => [r.t.toLocaleDateString(), r.longest ? fmtNum(milesOf(r.longest), 2) + " mi" : "—",
+      r.longest ? fmtPace(paceOf(r.longest)) : "—", r.longest && r.longest.avg_hr ? String(Math.round(r.longest.avg_hr)) : "—", r.longest ? r.longest.name : ""]));
+}
+
+/* ------------------------------------------- range-scoped additions */
+const T = (a) => parseDay(a.date).getTime();
+
+function renderRunHR(view) {
+  const runs = view.acts.filter((a) => a.sport === "run" && a.avg_hr);
+  renderLegend($("runhr-legend"), ZONES.map((z) => ({ label: z.label + " dominant", color: z.color })).concat([{ label: "No zone data", color: "--axis" }]), "rect");
+  [...$("runhr-legend").children].forEach((li) => { li.firstChild.className = "key-dot"; });
+  xyPanel($("runhr-chart"), {
+    xType: "time", xDomain: [view.window.start.getTime(), view.window.end.getTime()],
+    dots: runs.map((a) => { const z = dominantZone(a); return { x: T(a), y: a.avg_hr, color: z >= 0 ? ZONES[z].color : "--axis", hollow: z < 0, a }; }),
+    fmtY: (v) => fmtNum(v, 0), fmtX: () => "",
+    tip: (d) => { const z = dominantZone(d.a); return { head: `${longDate(parseDay(d.a.date))} · ${d.a.name}`, rows: [
+      { color: css(z >= 0 ? ZONES[z].color : "--axis"), value: Math.round(d.y) + " bpm", name: "avg HR" },
+      { color: null, value: z >= 0 ? ZONES[z].label : "—", name: "most time in" },
+      { color: null, value: fmtNum(milesOf(d.a), 1) + " mi", name: fmtPace(paceOf(d.a)) + " /mi" },
+    ] }; },
+    ariaLabel: "Average heart rate of each run, coloured by dominant zone",
+  });
+  if (runs.length) {
+    const hrs = runs.map((a) => a.avg_hr).sort((a, b) => a - b);
+    const q = (f) => hrs[Math.min(hrs.length - 1, Math.floor(hrs.length * f))];
+    const counts = [0, 0, 0, 0, 0]; runs.forEach((a) => { const z = dominantZone(a); if (z >= 0) counts[z]++; });
+    const top = counts.indexOf(Math.max(...counts));
+    $("runhr-note").textContent = `${runs.length} runs. Middle half of them averaged ${q(0.25)}–${q(0.75)} bpm. ${counts[top]} of ${runs.length} spent most of their time in ${ZONES[top].label}; ${counts[0] + counts[1]} were mostly zones 1–2.`;
+  } else $("runhr-note").textContent = "No runs with heart rate in this range.";
+  buildTable($("runhr-table"), ["Date", "Activity", "Distance", "Pace", "Avg HR", "Max HR", "Dominant zone"],
+    runs.slice().reverse().map((a) => { const z = dominantZone(a); return [a.date, a.name, fmtNum(milesOf(a), 1) + " mi", fmtPace(paceOf(a)), String(Math.round(a.avg_hr)), a.max_hr ? String(Math.round(a.max_hr)) : "—", z >= 0 ? ZONES[z].label : "—"]; }));
+}
+
+function renderEF(view) {
+  const runs = view.acts.filter((a) => a.sport === "run" && milesOf(a) >= 3 && efOf(a));
+  const roll = runs.map((a, i) => { const w = runs.slice(Math.max(0, i - 4), i + 1); return { x: T(a), y: w.reduce((s, r) => s + efOf(r), 0) / w.length }; });
+  renderLegend($("ef-legend"), [{ label: "Run", color: "--sport-run" }, { label: "5-run mean", color: "--intensity" }], "rect");
+  $("ef-legend").firstChild.firstChild.className = "key-dot";
+  $("ef-legend").lastChild.firstChild.className = "key-line";
+  xyPanel($("ef-chart"), {
+    xType: "time", xDomain: [view.window.start.getTime(), view.window.end.getTime()],
+    dots: runs.map((a) => ({ x: T(a), y: efOf(a), color: "--sport-run", opacity: 0.45, a })),
+    lines: runs.length >= 5 ? [{ points: roll.slice(4), color: "--intensity" }] : [],
+    fmtY: (v) => fmtNum(v, 2), fmtX: () => "",
+    tip: (d) => ({ head: `${longDate(parseDay(d.a.date))} · ${d.a.name}`, rows: [
+      { color: css("--sport-run"), value: fmtNum(d.y, 2) + " m/beat", name: "efficiency" },
+      { color: null, value: fmtPace(paceOf(d.a)) + " /mi", name: "pace" },
+      { color: null, value: Math.round(d.a.avg_hr) + " bpm", name: "avg HR" },
+      { color: null, value: d.a.temp != null ? Math.round(d.a.temp) + " °C" : "—", name: "min temp" },
+    ] }),
+    ariaLabel: "Aerobic efficiency of each run over time with a rolling mean",
+  });
+  if (runs.length >= 4) {
+    const half = Math.floor(runs.length / 2);
+    const m = (list) => list.reduce((s, a) => s + efOf(a), 0) / list.length;
+    const a1 = m(runs.slice(0, half)), a2 = m(runs.slice(half));
+    const pct = ((a2 - a1) / a1) * 100;
+    $("ef-note").textContent = `${runs.length} runs. First half of the range averaged ${fmtNum(a1, 2)} m/beat, second half ${fmtNum(a2, 2)} — ${pct >= 0 ? "+" : "−"}${fmtNum(Math.abs(pct), 1)}%. A rising line at the same heart rate means the same effort buys more speed; a 2–3% move is meaningful, and hot days pull it down.`;
+  } else $("ef-note").textContent = "Fewer than four qualifying runs in this range.";
+  buildTable($("ef-table"), ["Date", "Activity", "Distance", "Pace", "Avg HR", "Efficiency (m/beat)", "Min temp"],
+    runs.slice().reverse().map((a) => [a.date, a.name, fmtNum(milesOf(a), 1) + " mi", fmtPace(paceOf(a)), String(Math.round(a.avg_hr)), fmtNum(efOf(a), 2), a.temp != null ? Math.round(a.temp) + " °C" : "—"]));
+}
+
+const TEMP_BINS = [
+  { max: 15, label: "under 15 °C", color: "--heat-1" },
+  { max: 20, label: "15–20 °C", color: "--heat-2" },
+  { max: 25, label: "20–25 °C", color: "--heat-3" },
+  { max: 30, label: "25–30 °C", color: "--heat-4" },
+  { max: Infinity, label: "30 °C and up", color: "--heat-5" },
+];
+const tempBin = (t) => t == null ? null : TEMP_BINS.find((b) => t < b.max);
+
+function renderEasyPace(view) {
+  $("easy-title").textContent = `Easy-day pace vs temperature · runs at ≤${EASY_HR} bpm`;
+  $("easy-sub").textContent = `Pace of runs of 3 miles or more whose average heart rate stayed at or under ${EASY_HR} bpm, shaded by the minimum temperature the watch recorded. Same heart rate, slower pace, hotter day: that is heat, not lost fitness.`;
+  const runs = view.acts.filter((a) => a.sport === "run" && milesOf(a) >= 3 && a.avg_hr && a.avg_hr <= EASY_HR);
+  renderLegend($("easy-legend"), TEMP_BINS.map((b) => ({ label: b.label, color: b.color })).concat([{ label: "No temperature", color: "--axis" }]), "rect");
+  [...$("easy-legend").children].forEach((li, i) => { li.firstChild.className = "key-dot" + (i === TEMP_BINS.length ? " hollow" : ""); });
+  xyPanel($("easy-chart"), {
+    xType: "time", xDomain: [view.window.start.getTime(), view.window.end.getTime()], yInvert: true,
+    dots: runs.map((a) => { const b = tempBin(a.temp); return { x: T(a), y: paceOf(a), color: b ? b.color : "--axis", hollow: !b, a }; }),
+    hlines: [{ y: GOAL_PACE, label: `goal ${fmtPace(GOAL_PACE)} /mi` }],
+    fmtY: (v) => fmtPace(v), fmtX: () => "",
+    tip: (d) => { const b = tempBin(d.a.temp); return { head: `${longDate(parseDay(d.a.date))} · ${d.a.name}`, rows: [
+      { color: css(b ? b.color : "--axis"), value: fmtPace(d.y) + " /mi", name: "pace" },
+      { color: null, value: Math.round(d.a.avg_hr) + " bpm", name: "avg HR" },
+      { color: null, value: d.a.temp != null ? Math.round(d.a.temp) + " °C" : "not recorded", name: "min temp" },
+      { color: null, value: fmtNum(milesOf(d.a), 1) + " mi", name: "distance" },
+    ] }; },
+    emptyText: `No runs of 3 mi or more at ≤${EASY_HR} bpm in this range.`,
+    ariaLabel: "Pace of easy-effort runs over time, coloured by temperature",
+  });
+  const withT = runs.filter((a) => a.temp != null);
+  const hot = withT.filter((a) => a.temp >= 25), cool = withT.filter((a) => a.temp < 25);
+  const mp = (list) => list.reduce((s, a) => s + paceOf(a), 0) / list.length;
+  $("easy-note").textContent = runs.length
+    ? `${runs.length} easy-effort runs, ${withT.length} with a temperature. ` + (hot.length && cool.length
+      ? `Average pace ${fmtPace(mp(cool))} /mi below 25 °C against ${fmtPace(mp(hot))} /mi at 25 °C and up.`
+      : "Not enough runs on both sides of 25 °C to compare.") + " Temperature is only stored on runs where the watch recorded it."
+    : "";
+  buildTable($("easy-table"), ["Date", "Activity", "Distance", "Pace", "Avg HR", "Min temp"],
+    runs.slice().reverse().map((a) => [a.date, a.name, fmtNum(milesOf(a), 1) + " mi", fmtPace(paceOf(a)), String(Math.round(a.avg_hr)), a.temp != null ? Math.round(a.temp) + " °C" : "—"]));
+}
+
+/* zone-weighted minutes; a session without zones counts as moderate (×2) */
+const loadOf = (a) => a.zones ? a.zones.reduce((s, sec, i) => s + (sec / 60) * (i + 1), 0) : ((a.dur_s || 0) / 60) * 2;
+
+function renderACWR(view) {
+  const loadByDay = new Map();
+  for (const a of acts) loadByDay.set(a.date, (loadByDay.get(a.date) || 0) + loadOf(a));
+  const days = [];
+  const d0 = new Date(view.window.start); d0.setDate(d0.getDate() - 27);
+  for (let d = new Date(d0); d <= view.window.end; d.setDate(d.getDate() + 1)) days.push({ t: new Date(d), load: loadByDay.get(dayKey(d)) || 0 });
+  const rows = [];
+  days.forEach((d, i) => {
+    if (d.t < view.window.start) return;
+    const win = (n) => days.slice(Math.max(0, i - n + 1), i + 1).reduce((s, x) => s + x.load, 0) / n;
+    const acute = win(7), chronic = win(28);
+    rows.push({ t: d.t, load: d.load, acute, chronic, ratio: chronic > 0 ? acute / chronic : null });
+  });
+  const host = $("acwr-smalls");
+  host.replaceChildren();
+  const mk = (title, sub) => {
+    const box = document.createElement("div"); box.className = "small";
+    box.append(Object.assign(document.createElement("h3"), { textContent: title }), Object.assign(document.createElement("p"), { className: "sub", textContent: sub }));
+    const c = document.createElement("div"); c.className = "chart"; box.appendChild(c); host.appendChild(box); return c;
+  };
+  // both boxes go into the grid before either chart measures its width
+  const loadHost = mk("Daily load", "Acute against chronic, same units");
+  const ratioHost = mk("Acute : chronic ratio", "Shaded band is 0.8–1.3");
+  const xd = [view.window.start.getTime(), view.window.end.getTime()];
+  const byT = new Map(rows.map((r) => [r.t.getTime(), r]));
+  renderLegend($("acwr-legend"), [{ label: "Acute (7-day)", color: "--sport-run" }, { label: "Chronic (28-day)", color: "--intensity" }], "line");
+  xyPanel(loadHost, {
+    xType: "time", xDomain: xd, plotH: 118, padL: 40, minW: 240,
+    lines: [{ points: rows.map((r) => ({ x: r.t.getTime(), y: r.acute })), color: "--sport-run" },
+            { points: rows.map((r) => ({ x: r.t.getTime(), y: r.chronic })), color: "--intensity" }],
+    yDomain: [0, Math.max(1, ...rows.map((r) => Math.max(r.acute, r.chronic))) * 1.1],
+    fmtY: (v) => fmtNum(v, 0), fmtX: () => "",
+    tipAt: (x) => { const r = byT.get(x); return { head: longDate(r.t), rows: [
+      { color: css("--sport-run"), value: fmtNum(r.acute, 0), name: "acute" },
+      { color: css("--intensity"), value: fmtNum(r.chronic, 0), name: "chronic" },
+      { color: null, value: fmtNum(r.load, 0), name: "today" },
+    ] }; },
+    ariaLabel: "Acute and chronic training load over time",
+  });
+  xyPanel(ratioHost, {
+    xType: "time", xDomain: xd, plotH: 118, padL: 40, minW: 240,
+    lines: [{ points: rows.map((r) => ({ x: r.t.getTime(), y: r.ratio })), color: "--sport-run" }],
+    bands: [{ points: [{ x: xd[0], lo: 0.8, hi: 1.3 }, { x: xd[1], lo: 0.8, hi: 1.3 }], color: "--sport-run" }],
+    yDomain: [0, Math.max(1.6, ...rows.map((r) => r.ratio || 0)) * 1.05],
+    fmtY: (v) => fmtNum(v, 1), fmtX: () => "",
+    tipAt: (x) => { const r = byT.get(x); return { head: longDate(r.t), rows: [
+      { color: css("--sport-run"), value: r.ratio == null ? "—" : fmtNum(r.ratio, 2), name: "ratio" },
+      { color: null, value: r.ratio == null ? "" : r.ratio < 0.8 ? "detraining / taper" : r.ratio <= 1.3 ? "in band" : "spiking", name: "" },
+    ] }; },
+    ariaLabel: "Acute to chronic training load ratio over time",
+  });
+  const last = rows.length ? rows[rows.length - 1] : null;
+  const over = rows.filter((r) => r.ratio != null && r.ratio > 1.3).length, under = rows.filter((r) => r.ratio != null && r.ratio < 0.8).length;
+  $("acwr-note").textContent = last && last.ratio != null
+    ? `Today the ratio is ${fmtNum(last.ratio, 2)} (acute ${fmtNum(last.acute, 0)}, chronic ${fmtNum(last.chronic, 0)}). In this range ${over} day${over === 1 ? "" : "s"} sat above 1.3 and ${under} below 0.8. A taper deliberately drops the ratio below 0.8 in the final two weeks. Computed here from your heart-rate zones: the Forerunner 165 is not a "primary training" device, so Garmin does not produce Training Load, Training Status or ACWR for this account.`
+    : "Not enough history to compute a chronic load.";
+  buildTable($("acwr-table"), ["Date", "Load", "Acute (7d)", "Chronic (28d)", "Ratio"],
+    rows.slice().reverse().map((r) => [r.t.toLocaleDateString(), fmtNum(r.load, 0), fmtNum(r.acute, 0), fmtNum(r.chronic, 0), r.ratio == null ? "—" : fmtNum(r.ratio, 2)]));
+}
+
+const HRV_STATUS = { BALANCED: { color: "--good", label: "Balanced" }, LOW: { color: "--bad", label: "Low" }, UNBALANCED: { color: "--warn", label: "Unbalanced" }, POOR: { color: "--bad", label: "Poor" } };
+
+function renderStrip(view) {
+  const host = $("strip-chart");
+  host.replaceChildren();
+  const days = [];
+  for (let d = new Date(view.window.start); d <= view.window.end; d.setDate(d.getDate() + 1)) days.push(new Date(d));
+  const trainByDay = new Map();
+  for (const a of view.acts) trainByDay.set(a.date, (trainByDay.get(a.date) || 0) + (a.dur_s || 0) / 60);
+  const mins = [...trainByDay.values()].filter((v) => v > 0).sort((a, b) => a - b);
+  const q = (f) => mins.length ? mins[Math.min(mins.length - 1, Math.floor(mins.length * f))] : 0;
+  const cuts = [q(0.2), q(0.4), q(0.6), q(0.8)];
+  const heatLevel = (v) => !v ? 0 : v <= cuts[0] ? 1 : v <= cuts[1] ? 2 : v <= cuts[2] ? 3 : v <= cuts[3] ? 4 : 5;
+  const bucket = (v, edges) => v == null ? 0 : 1 + edges.filter((e) => v >= e).length;
+  const rowsDef = [
+    { label: "Training", get: (k) => trainByDay.get(k) || 0, color: (v) => "--heat-" + heatLevel(v), fmt: (v) => v ? fmtDur(v * 60) : "rest" },
+    { label: "HRV status", get: (k) => (wellByDate[k] || {}).hrv_status, color: (v) => HRV_STATUS[v] ? HRV_STATUS[v].color : "--heat-0", fmt: (v) => HRV_STATUS[v] ? HRV_STATUS[v].label : "—" },
+    { label: "Body Battery", get: (k) => (wellByDate[k] || {}).bb_high, color: (v) => "--heat-" + bucket(v, [50, 65, 80, 95]), fmt: (v) => v == null ? "—" : v + " high" },
+    { label: "Stress", get: (k) => (wellByDate[k] || {}).stress_avg, color: (v) => "--heat-" + bucket(v, [15, 25, 35, 50]), fmt: (v) => v == null ? "—" : v + " avg" },
+  ];
+  const W = Math.max(320, host.clientWidth || 720);
+  const padL = 84, padT = 18, rowH = 16, gap = 2;
+  const cellW = Math.max(1, (W - padL - 8) / days.length - (days.length > 200 ? 0 : 1));
+  const stepX = (W - padL - 8) / days.length;
+  const H = padT + rowsDef.length * (rowH + gap) + 22;
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img" }, host);
+  svg.setAttribute("aria-label", "Daily training, HRV status, Body Battery and stress");
+  rowsDef.forEach((r, ri) => {
+    const y = padT + ri * (rowH + gap);
+    txt(svg, padL - 8, y + rowH - 4, r.label, "tick", "end");
+    days.forEach((d, i) => {
+      const v = r.get(dayKey(d));
+      el("rect", { x: padL + i * stepX, y, width: cellW, height: rowH, rx: cellW > 4 ? 2 : 0, fill: css(r.color(v)) }, svg);
+    });
+  });
+  // month labels along the top
+  let lastM = -1;
+  days.forEach((d, i) => { if (d.getMonth() !== lastM && (i === 0 ? d.getDate() <= 20 : true)) { lastM = d.getMonth(); if (i === 0 || d.getDate() === 1) txt(svg, padL + i * stepX, padT - 6, MONTHS[d.getMonth()], "tick", "start"); } });
+  const hover = el("rect", { y: padT, width: Math.max(cellW, 2), height: rowsDef.length * (rowH + gap) - gap, fill: "none", stroke: css("--text-primary"), "stroke-width": 1.5, opacity: 0, "pointer-events": "none" }, svg);
+  const grid = el("rect", { x: padL, y: padT, width: W - padL - 8, height: rowsDef.length * (rowH + gap), fill: "transparent", tabindex: "0" }, svg);
+  const show = (e, i) => {
+    const d = days[i], k = dayKey(d);
+    hover.setAttribute("x", padL + i * stepX); hover.setAttribute("opacity", 1);
+    showTip(e, longDate(d), rowsDef.map((r) => { const v = r.get(k); return { color: css(r.color(v)), value: r.fmt(v), name: r.label }; }));
+  };
+  grid.addEventListener("pointermove", (e) => {
+    const rct = svg.getBoundingClientRect();
+    const px = ((e.clientX - rct.left) / rct.width) * W;
+    show(e, clamp(Math.floor((px - padL) / stepX), 0, days.length - 1));
+  });
+  grid.addEventListener("pointerleave", () => { hover.setAttribute("opacity", 0); hideTip(); });
+  grid.addEventListener("focus", () => { const r = grid.getBoundingClientRect(); show({ clientX: r.right - 10, clientY: r.top + 10 }, days.length - 1); });
+  grid.addEventListener("blur", () => { hover.setAttribute("opacity", 0); hideTip(); });
+
+  renderLegend($("strip-legend"), [
+    { label: "HRV balanced", color: "--good" }, { label: "HRV unbalanced", color: "--warn" }, { label: "HRV low", color: "--bad" },
+    { label: "Training / Body Battery / Stress: darker is more", color: "--heat-4" }, { label: "No data", color: "--heat-0" },
+  ], "rect");
+  const withHrv = days.filter((d) => (wellByDate[dayKey(d)] || {}).hrv_status);
+  const low = withHrv.filter((d) => wellByDate[dayKey(d)].hrv_status === "LOW").length;
+  const stress = days.map((d) => (wellByDate[dayKey(d)] || {}).stress_avg).filter((v) => v != null);
+  const bb = days.map((d) => (wellByDate[dayKey(d)] || {}).bb_high).filter((v) => v != null);
+  $("strip-note").textContent = withHrv.length
+    ? `HRV status was low on ${low} of ${withHrv.length} nights with a reading. Body Battery topped out at an average of ${fmtNum(avg(bb, (v) => v), 0)}; average daily stress ${fmtNum(avg(stress, (v) => v), 0)}. HRV status is Garmin's comparison of last night against your 3-week baseline; Body Battery high is the day's peak charge, usually on waking.`
+    : "No HRV status in this range.";
+  buildTable($("strip-table"), ["Date", "Training", "HRV status", "Body Battery high", "Body Battery low", "Stress avg"],
+    days.slice().reverse().map((d) => { const k = dayKey(d), w = wellByDate[k] || {}; return [k, trainByDay.get(k) ? fmtDur(trainByDay.get(k) * 60) : "—", w.hrv_status ? (HRV_STATUS[w.hrv_status] || { label: w.hrv_status }).label : "—", w.bb_high ?? "—", w.bb_low ?? "—", w.stress_avg ?? "—"]; }));
+}
+
+/* ------------------------------------------------------------- wiring */
+document.querySelectorAll(".filters .chip[data-days]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    state.days = Number(btn.dataset.days);
+    document.querySelectorAll(".filters .chip[data-days]").forEach((b) =>
+      b.setAttribute("aria-pressed", String(b === btn)));
+    render();
+  });
+});
+document.querySelectorAll(".tbl-toggle").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const t = $(btn.dataset.table);
+    t.hidden = !t.hidden;
+    btn.textContent = t.hidden ? "Show data table" : "Hide data table";
+  });
+});
+const themeBtn = $("theme-btn");
+themeBtn.addEventListener("click", () => {
+  const dark = document.documentElement.getAttribute("data-theme") === "dark"
+    || (!document.documentElement.hasAttribute("data-theme") && matchMedia("(prefers-color-scheme: dark)").matches);
+  document.documentElement.setAttribute("data-theme", dark ? "light" : "dark");
+  themeBtn.textContent = dark ? "Dark" : "Light";
+  themeBtn.setAttribute("aria-pressed", String(!dark));
+  render();
+});
+let rt;
+addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(render, 140); });
+
+$("updated").textContent = DATA.meta.last_pull
+  ? "Updated " + new Date(DATA.meta.last_pull).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+  : "";
+document.querySelector('.chip[data-days="90"]').setAttribute("aria-pressed", "true");
+if (matchMedia("(prefers-color-scheme: dark)").matches) { themeBtn.textContent = "Light"; themeBtn.setAttribute("aria-pressed", "true"); }
+render();
+</script>
+</body>
+</html>

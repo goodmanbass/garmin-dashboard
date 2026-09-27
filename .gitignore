@@ -1,0 +1,17 @@
+# Personal health data — activities, heart rate, sleep, HRV, race goal
+data/
+
+# The built page embeds all of that data
+dashboard.html
+
+# Run logs
+*.log
+
+# Python
+__pycache__/
+venv/
+*.pyc
+
+# Garmin sign-in tokens never live in this folder, but just in case
+.garminconnect/
+garmin_tokens.json
