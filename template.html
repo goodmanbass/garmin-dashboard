@@ -134,8 +134,12 @@
   .hero .unit { font-size: 20px; font-weight: 500; color: var(--text-secondary); margin-left: 4px; }
   .hero .delta { font-size: 13px; color: var(--text-secondary); }
 
-  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
-  .kpi { background: var(--surface-1); padding: 13px 15px 11px; min-width: 0; }
+  /* Dividers are drawn by each tile (right + bottom edge), not by a gray grid
+     background showing through gaps -- that background also filled any empty
+     cells on a short last row with a solid gray block. The container clips the
+     outer edges, so only interior dividers show. */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .kpi { background: var(--surface-1); padding: 13px 15px 11px; min-width: 0; box-shadow: 1px 0 0 var(--border), 0 1px 0 var(--border); }
   .kpi .label { color: var(--text-muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .kpi .value { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; margin-top: 1px; }
   .kpi .value .u { font-size: 13px; font-weight: 500; color: var(--text-secondary); margin-left: 4px; }
@@ -203,6 +207,70 @@
   .section-label { color: var(--text-muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; margin: 28px 0 10px; }
   .legend .key-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
   .legend .key-dot.hollow { background: var(--surface-1) !important; border: 2px solid var(--axis); }
+
+  /* this week: Sunday-first, one column per day, each workout opens its full stats */
+  .week-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .week-head h2 { font-size: 15px; font-weight: 600; margin: 0; }
+  .week-head .range { color: var(--text-muted); font-size: 12px; }
+  .week-nav { display: flex; gap: 6px; margin-left: auto; }
+  .week-nav .chip { padding: 4px 12px; }
+  .week-nav .chip:disabled { opacity: .4; cursor: default; }
+  .week-totals { color: var(--text-secondary); font-size: 12px; margin: 4px 0 14px; }
+  .week-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+  .day { border: 1px solid var(--grid); border-radius: 10px; padding: 9px 8px 10px; min-height: 124px; display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+  .day.today { border-color: var(--text-secondary); }
+  .day-name { display: flex; align-items: baseline; justify-content: space-between; gap: 4px; font-size: 11.5px; color: var(--text-muted); }
+  .day-name b { color: var(--text-primary); font-weight: 600; font-size: 12.5px; }
+  .day.today .day-name .tag { color: var(--text-primary); font-weight: 600; }
+  .wos { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .wo {
+    appearance: none; text-align: left; font: inherit; color: inherit; width: 100%; min-width: 0;
+    background: var(--page); border: 1px solid var(--border); border-radius: 8px;
+    padding: 7px 8px 8px; cursor: pointer; display: flex; flex-direction: column; gap: 1px;
+  }
+  .wo:hover { border-color: var(--axis); }
+  .wo:focus-visible { outline: 2px solid var(--text-secondary); outline-offset: 1px; }
+  .wo-sport { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-secondary); min-width: 0; }
+  .wo-sport span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wo-main { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.25; }
+  .wo-main .u { font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-left: 3px; }
+  .wo-hr { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  .day .rest { color: var(--text-muted); font-size: 12px; }
+  @media (max-width: 760px) {
+    .week-grid { grid-template-columns: 1fr; gap: 6px; }
+    .day { min-height: 0; flex-direction: row; align-items: flex-start; gap: 10px; }
+    .day-name { flex-direction: column; align-items: flex-start; justify-content: flex-start; width: 52px; flex: none; }
+    .wos { flex: 1; }
+    .day .rest { padding-top: 2px; }
+  }
+
+  /* full-stats panel for one activity */
+  dialog.act {
+    border: 1px solid var(--border); border-radius: 14px; padding: 0;
+    background: var(--surface-1); color: var(--text-primary);
+    width: min(780px, calc(100vw - 24px)); max-height: calc(100vh - 40px);
+    box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  }
+  dialog.act::backdrop { background: rgba(0,0,0,.5); }
+  .act-body { padding: 20px 22px 18px; overflow: auto; max-height: calc(100vh - 42px); }
+  .act-top { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+  .act-top h2 { font-size: 18px; font-weight: 600; margin: 0; overflow-wrap: anywhere; }
+  .act-top .when { color: var(--text-muted); font-size: 12px; margin-top: 3px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .act-close {
+    margin-left: auto; flex: none; appearance: none; background: none; cursor: pointer;
+    border: 1px solid var(--border); color: var(--text-secondary); border-radius: 999px;
+    width: 32px; height: 32px; font-size: 17px; line-height: 1;
+  }
+  .act-close:hover { border-color: var(--axis); color: var(--text-primary); }
+  dialog.act h3 { font-size: 13px; font-weight: 600; margin: 20px 0 8px; }
+  .act-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); column-gap: 24px; }
+  .act-stats div { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--grid); font-size: 12.5px; }
+  .act-stats .k { color: var(--text-muted); }
+  .act-stats .v { color: var(--text-primary); font-variant-numeric: tabular-nums; text-align: right; }
+  .zonebar { display: flex; gap: 2px; height: 14px; border-radius: 4px; overflow: hidden; background: var(--surface-1); margin-bottom: 10px; }
+  .zonebar span { display: block; min-width: 2px; }
+  .act-link { display: inline-block; margin-top: 18px; color: var(--text-primary); font-size: 13px; font-weight: 600; text-underline-offset: 3px; }
+  .act-foot { color: var(--text-muted); font-size: 11.5px; margin-top: 8px; }
 </style>
 </head>
 <body>
@@ -212,6 +280,24 @@
     <h1>Training</h1>
     <div class="updated" id="updated"></div>
   </header>
+
+  <section class="card" id="week-card" style="margin-top: 18px">
+    <div class="week-head">
+      <h2 id="week-title">This week</h2>
+      <span class="range" id="week-range"></span>
+      <div class="week-nav">
+        <button class="chip" id="week-prev" aria-label="Previous week">‹</button>
+        <button class="chip" id="week-now">This week</button>
+        <button class="chip" id="week-next" aria-label="Next week">›</button>
+      </div>
+    </div>
+    <p class="week-totals" id="week-totals"></p>
+    <div class="week-grid" id="week-grid"></div>
+  </section>
+
+  <dialog class="act" id="act-dialog" aria-labelledby="act-title">
+    <div class="act-body" id="act-body"></div>
+  </dialog>
 
   <div class="filters" role="group" aria-label="Date range">
     <span class="lbl">Range</span>
@@ -867,6 +953,246 @@ const wornNights = (well) => well.filter((d) => d.sleep_s);
 const sum = (arr, f) => arr.reduce((s, x) => s + (f(x) || 0), 0);
 const avg = (arr, f) => { const v = arr.map(f).filter((x) => x != null && isFinite(x)); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
 
+/* ------------------------------------------------------------ this week */
+/* Sunday-first week grid at the top of the page. Not scoped by the range
+   filter: it always shows one calendar week, paged with the arrows. */
+const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const actsByDate = new Map();
+for (const a of acts) {
+  if (!actsByDate.has(a.date)) actsByDate.set(a.date, []);
+  actsByDate.get(a.date).push(a);
+}
+for (const list of actsByDate.values()) list.sort((a, b) => (a.time || "") < (b.time || "") ? -1 : 1);
+let weekOffset = 0;
+
+function sundayOf(dt) {
+  const d = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+  d.setDate(d.getDate() - d.getDay());
+  return d;
+}
+function todayMidnight() { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }
+
+/* "lap_swimming" -> "Lap swimming"; falls back to the bucket label */
+function sportName(a) {
+  const raw = (a.sportRaw || "").replace(/_/g, " ").trim();
+  return raw ? raw[0].toUpperCase() + raw.slice(1) : SPORT_BY_KEY[a.sport].label;
+}
+/* the one number a day tile leads with: miles, yards for a swim, or time */
+function headline(a) {
+  if (a.dist_m && a.sport === "swim") return [fmtNum(a.dist_m / M_PER_YD), "yd"];
+  if (a.dist_m) return [fmtNum(a.dist_m / M_PER_MI, 2), "mi"];
+  return [fmtDur(a.dur_s), ""];
+}
+const cToF = (c) => c * 9 / 5 + 32;
+const clock = (hhmm) => {
+  if (!hhmm) return "";
+  const [h, m] = hhmm.split(":").map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+};
+function hms(sec) {
+  if (!sec) return "—";
+  sec = Math.round(sec);
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  return h ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}` : `${m}:${String(s).padStart(2, "0")}`;
+}
+
+function renderWeek() {
+  const start = sundayOf(todayMidnight());
+  start.setDate(start.getDate() + weekOffset * 7);
+  const end = new Date(start); end.setDate(end.getDate() + 6);
+  const today = todayMidnight();
+
+  $("week-title").textContent = weekOffset === 0 ? "This week" : weekOffset === -1 ? "Last week" : "Week of " + shortDate(start);
+  $("week-range").textContent = `${shortDate(start)} – ${shortDate(end)}${end.getFullYear() !== today.getFullYear() ? ", " + end.getFullYear() : ""}`;
+  const first = acts.length ? sundayOf(parseDay(acts[0].date)) : start;
+  $("week-prev").disabled = start <= first;
+  $("week-next").disabled = weekOffset >= 0;
+  $("week-now").hidden = weekOffset === 0;
+
+  const inWeek = [];
+  const grid = $("week-grid");
+  grid.replaceChildren();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start); d.setDate(d.getDate() + i);
+    const list = actsByDate.get(dayKey(d)) || [];
+    inWeek.push(...list);
+
+    const cell = document.createElement("div");
+    cell.className = "day" + (+d === +today ? " today" : "");
+    const name = document.createElement("div");
+    name.className = "day-name";
+    const b = document.createElement("b"); b.textContent = DOW[i];
+    const tag = document.createElement("span"); tag.className = "tag";
+    tag.textContent = +d === +today ? "Today" : shortDate(d);
+    name.append(b, tag);
+
+    const wos = document.createElement("div");
+    wos.className = "wos";
+    if (!list.length) {
+      const r = document.createElement("div");
+      r.className = "rest";
+      r.textContent = d > today ? "" : "Rest";
+      wos.appendChild(r);
+    }
+    for (const a of list) {
+      const btn = document.createElement("button");
+      btn.className = "wo";
+      btn.type = "button";
+      const sp = document.createElement("div"); sp.className = "wo-sport";
+      const dot = document.createElement("span"); dot.className = "sport-dot"; dot.style.background = css(SPORT_BY_KEY[a.sport].color); dot.style.marginRight = "0";
+      const lab = document.createElement("span"); lab.textContent = sportName(a);
+      sp.append(dot, lab);
+      const [val, unit] = headline(a);
+      const main = document.createElement("div"); main.className = "wo-main";
+      main.append(val);
+      if (unit) main.append(Object.assign(document.createElement("span"), { className: "u", textContent: unit }));
+      const hr = document.createElement("div"); hr.className = "wo-hr";
+      hr.textContent = a.avg_hr ? `Avg HR ${Math.round(a.avg_hr)}` : "No heart rate";
+      btn.append(sp, main, hr);
+      btn.setAttribute("aria-label", `${sportName(a)} on ${DOW[i]} ${shortDate(d)}: ${val} ${unit}, ${hr.textContent}. Open full stats.`);
+      btn.addEventListener("click", () => openActivity(a));
+      wos.appendChild(btn);
+    }
+    cell.append(name, wos);
+    grid.appendChild(cell);
+  }
+
+  const runMi = inWeek.filter((a) => a.sport === "run").reduce((s, a) => s + (a.dist_m || 0), 0) / M_PER_MI;
+  const secs = inWeek.reduce((s, a) => s + (a.dur_s || 0), 0);
+  $("week-totals").textContent = inWeek.length
+    ? `${inWeek.length} session${inWeek.length === 1 ? "" : "s"} · ${fmtDur(secs)} total` + (runMi ? ` · ${fmtNum(runMi, 1)} running miles` : "") + " · click a workout for full stats"
+    : "No workouts logged this week yet.";
+}
+
+function openActivity(a) {
+  const body = $("act-body");
+  body.replaceChildren();
+  const mk = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+
+  // title row
+  const top = mk("div", "act-top");
+  const head = mk("div");
+  const h = mk("h2", null, a.name); h.id = "act-title";
+  const when = mk("div", "when");
+  const dot = mk("span", "sport-dot"); dot.style.background = css(SPORT_BY_KEY[a.sport].color); dot.style.marginRight = "0";
+  const d = parseDay(a.date);
+  when.append(dot, `${sportName(a)} · ${d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}${a.time ? " · " + clock(a.time) : ""}`);
+  head.append(h, when);
+  const close = mk("button", "act-close", "×"); close.type = "button"; close.setAttribute("aria-label", "Close");
+  close.addEventListener("click", () => $("act-dialog").close());
+  top.append(head, close);
+  body.appendChild(top);
+
+  // headline tiles — same tile grammar as the KPI row
+  const tiles = mk("div", "kpis");
+  const tile = (label, value, unit) => {
+    if (value == null || value === "—") return;
+    const t = mk("div", "kpi");
+    t.append(mk("div", "label", label));
+    const v = mk("div", "value", value);
+    if (unit) v.append(mk("span", "u", unit));
+    t.appendChild(v);
+    tiles.appendChild(t);
+  };
+  const moving = a.moving_s || a.dur_s;
+  if (a.dist_m) {
+    const [val, unit] = headline(a);
+    tile("Distance", val, unit);
+  }
+  tile(a.moving_s && a.dur_s && Math.abs(a.dur_s - a.moving_s) > 30 ? "Moving time" : "Time", hms(moving));
+  if (a.dist_m && moving) {
+    const p = paceCell(a);
+    const m = p.match(/^([\d:.,]+)\s*(.*)$/);
+    tile(a.sport === "bike" ? "Avg speed" : "Avg pace", m ? m[1] : p, m ? m[2] : "");
+  }
+  tile("Avg heart rate", a.avg_hr ? String(Math.round(a.avg_hr)) : null, "bpm");
+  tile("Max heart rate", a.max_hr ? String(Math.round(a.max_hr)) : null, "bpm");
+  tile("Calories", a.cal ? fmtNum(a.cal) : null, "kcal");
+  body.appendChild(tiles);
+
+  // every other stat Garmin sent, skipping what doesn't apply
+  const stats = [
+    ["Elapsed time", a.elapsed_s && Math.abs(a.elapsed_s - moving) > 30 ? hms(a.elapsed_s) : null],
+    ["Timer time", a.moving_s && a.dur_s && Math.abs(a.dur_s - a.moving_s) > 30 ? hms(a.dur_s) : null],
+    ["Elevation gain", a.elev_m != null ? `${fmtNum(a.elev_m * 3.28084)} ft` : null],
+    ["Avg cadence", a.cad ? `${Math.round(a.cad)} spm` : a.bike_cad ? `${Math.round(a.bike_cad)} rpm` : null],
+    ["Avg power", a.power ? `${Math.round(a.power)} W` : null],
+    ["Normalized power", a.np ? `${Math.round(a.np)} W` : null],
+    ["Max speed", a.max_speed && a.sport !== "swim" ? (a.sport === "bike" ? `${fmtNum(a.max_speed * 2.23694, 1)} mph` : `${fmtPace(M_PER_MI / a.max_speed)} /mi`) : null],
+    ["Aerobic training effect", a.aerobic_te != null ? fmtNum(a.aerobic_te, 1) : null],
+    ["Anaerobic training effect", a.anaerobic_te != null ? fmtNum(a.anaerobic_te, 1) : null],
+    ["Training load", a.load != null ? fmtNum(a.load) : null],
+    ["VO₂ max (this activity)", a.vo2max ? fmtNum(a.vo2max) : null],
+    ["Pool length", a.pool_m ? `${fmtNum(a.pool_m / M_PER_YD)} yd` : null],
+    ["Avg strokes per length", a.strokes ? fmtNum(a.strokes, 1) : null],
+    ["Avg SWOLF", a.swolf ? fmtNum(a.swolf) : null],
+    ["Lowest temperature", a.temp != null ? `${fmtNum(cToF(a.temp))}°F` : null],
+  ].filter(([, v]) => v != null);
+  if (stats.length) {
+    body.appendChild(mk("h3", null, "Details"));
+    const grid = mk("div", "act-stats");
+    for (const [k, v] of stats) { const row = mk("div"); row.append(mk("span", "k", k), mk("span", "v", v)); grid.appendChild(row); }
+    body.appendChild(grid);
+  }
+
+  // time in heart-rate zones: bar + a legend that carries the numbers
+  const zsum = (a.zones || []).reduce((s, v) => s + v, 0);
+  if (zsum > 0) {
+    body.appendChild(mk("h3", null, "Time in heart-rate zones"));
+    const bar = mk("div", "zonebar");
+    bar.setAttribute("role", "img");
+    bar.setAttribute("aria-label", ZONES.map((z, i) => `${z.label} ${fmtDur(a.zones[i])}`).join(", "));
+    const leg = mk("ul", "legend");
+    ZONES.forEach((z, i) => {
+      const secs = a.zones[i] || 0;
+      if (secs > 0) { const s = mk("span"); s.style.background = css(z.color); s.style.flex = String(secs); bar.appendChild(s); }
+      const li = mk("li");
+      const key = mk("span", "key-rect"); key.style.background = css(z.color);
+      li.append(key, `${z.label} · ${secs ? fmtDur(secs) : "0m"} · ${fmtNum(100 * secs / zsum)}%`);
+      leg.appendChild(li);
+    });
+    body.append(bar, leg);
+  }
+
+  // splits
+  if (a.laps && a.laps.length > 1) {
+    body.appendChild(mk("h3", null, a.sport === "swim" ? "Intervals" : "Splits"));
+    const swim = a.sport === "swim";
+    const cols = [
+      ["#", (l, i) => String(i + 1)],
+      ["Distance", (l) => !l.d ? "—" : swim ? `${fmtNum(l.d / M_PER_YD)} yd` : `${fmtNum(l.d / M_PER_MI, 2)} mi`],
+      ["Time", (l) => hms(l.t)],
+      [a.sport === "bike" ? "Speed" : "Pace", (l) => !l.d || !l.t ? "—"
+        : a.sport === "bike" ? `${fmtNum((l.d / M_PER_MI) / (l.t / 3600), 1)} mph`
+        : swim ? `${fmtPace(l.t / (l.d / M_PER_YD / 100))} /100yd`
+        : `${fmtPace(l.t / (l.d / M_PER_MI))} /mi`],
+      ["Avg HR", (l) => l.hr ?? "—"],
+      ["Max HR", (l) => l.mhr ?? "—"],
+    ];
+    if (a.laps.some((l) => l.up != null) && !swim) cols.push(["Climb", (l) => l.up == null ? "—" : `${fmtNum(l.up * 3.28084)} ft`]);
+    if (a.laps.some((l) => l.cad)) cols.push(["Cadence", (l) => l.cad ?? "—"]);
+    if (a.laps.some((l) => l.pw)) cols.push(["Power", (l) => l.pw ? `${l.pw} W` : "—"]);
+    if (a.laps.some((l) => l.swolf)) cols.push(["SWOLF", (l) => l.swolf ?? "—"]);
+    const wrap = mk("div", "tbl-wrap");
+    buildTable(wrap, cols.map((c) => c[0]), a.laps.map((l, i) => cols.map((c) => String(c[1](l, i)))));
+    body.appendChild(wrap);
+  } else if (!a.laps && parseDay(a.date) >= new Date(Date.now() - 45 * 86400000)) {
+    body.appendChild(mk("p", "act-foot", "Splits for this workout will appear after the next refresh."));
+  }
+
+  if (a.id) {
+    const link = mk("a", "act-link", "Open in Garmin Connect ↗");
+    link.href = `https://connect.garmin.com/modern/activity/${encodeURIComponent(a.id)}`;
+    link.target = "_blank";
+    link.rel = "noopener";
+    body.appendChild(link);
+  }
+
+  const dlg = $("act-dialog");
+  if (!dlg.open) dlg.showModal();
+  body.scrollTop = 0;
+}
+
 /* ------------------------------------------------------------ render */
 function renderKPIs(view) {
   const hrs = sum(view.acts, (a) => a.dur_s) / 3600;
@@ -1073,6 +1399,7 @@ function render() {
   const bucket = daily ? "Daily" : "Weekly";
   const bucketCol = daily ? "Day" : "Week of";
 
+  renderWeek();
   renderKPIs(view);
 
   $("vol-title").textContent = `${bucket} volume by sport`;
@@ -1907,6 +2234,12 @@ themeBtn.addEventListener("click", () => {
 });
 let rt;
 addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(render, 140); });
+
+$("week-prev").addEventListener("click", () => { weekOffset--; renderWeek(); });
+$("week-next").addEventListener("click", () => { if (weekOffset < 0) { weekOffset++; renderWeek(); } });
+$("week-now").addEventListener("click", () => { weekOffset = 0; renderWeek(); });
+// clicking the dimmed area outside the panel closes it; Esc is built in
+$("act-dialog").addEventListener("click", (e) => { if (e.target === e.currentTarget) e.currentTarget.close(); });
 
 $("updated").textContent = DATA.meta.last_pull
   ? "Updated " + new Date(DATA.meta.last_pull).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })

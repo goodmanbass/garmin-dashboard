@@ -61,6 +61,26 @@ def load(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def rnd(v: Any, nd: int = 0) -> Any:
+    return None if v is None else round(v, nd) if nd else round(v)
+
+
+def compact_lap(lap: dict[str, Any]) -> dict[str, Any]:
+    """Short keys: laps are the bulkiest thing embedded in the page."""
+    row = {
+        "d": rnd(lap.get("distance_m"), 1),
+        "t": rnd(lap.get("moving_s") or lap.get("duration_s"), 1),
+        "hr": rnd(lap.get("avg_hr")),
+        "mhr": rnd(lap.get("max_hr")),
+        "up": rnd(lap.get("elev_gain_m"), 1),
+        "cad": rnd(lap.get("run_cadence")),
+        "pw": rnd(lap.get("avg_power")),
+        "swolf": rnd(lap.get("swolf")),
+        "str": lap.get("strokes"),
+    }
+    return {k: v for k, v in row.items() if v is not None}
+
+
 def build_activities(raw: dict[str, Any]) -> list[dict[str, Any]]:
     out = []
     for act in raw.values():
@@ -71,26 +91,41 @@ def build_activities(raw: dict[str, Any]) -> list[dict[str, Any]]:
         zones_raw = act.get("hr_zones") or {}
         zones = [round(zones_raw.get(f"hrTimeInZone_{i}", 0) or 0) for i in range(1, 6)]
         row = {
+            "id": act.get("activityId"),
             "date": date,
+            "time": start[11:16] or None,
             "name": act.get("name") or "Activity",
             "sport": bucket_for(act.get("sport")),
             "sportRaw": act.get("sport"),
             "dist_m": round(act.get("distance_m") or 0, 1) or None,
             "dur_s": round(act.get("duration_s") or 0),
+            "moving_s": rnd(act.get("moving_s")),
+            "elapsed_s": rnd(act.get("elapsed_s")),
             "avg_hr": act.get("avg_hr"),
             "max_hr": act.get("max_hr"),
             "cal": act.get("calories"),
             "elev_m": act.get("elev_gain_m"),
             "aerobic_te": act.get("aerobic_te"),
+            "anaerobic_te": act.get("anaerobic_te"),
+            "load": rnd(act.get("training_load")),
             "power": act.get("avg_power"),
+            "np": act.get("norm_power"),
             "speed": act.get("avg_speed_mps"),
+            "max_speed": act.get("max_speed_mps"),
             "cad": act.get("run_cadence"),
+            "bike_cad": act.get("bike_cadence"),
             "temp": act.get("min_temp_c"),
+            "strokes": act.get("swim_strokes"),
+            "swolf": act.get("swolf"),
+            "pool_m": act.get("pool_length_m"),
+            "vo2max": act.get("vo2max"),
         }
         if any(zones):
             row["zones"] = zones
+        if act.get("laps"):
+            row["laps"] = [compact_lap(lap) for lap in act["laps"]]
         out.append({k: v for k, v in row.items() if v is not None})
-    out.sort(key=lambda r: r["date"])
+    out.sort(key=lambda r: (r["date"], r.get("time") or ""))
     return out
 
 

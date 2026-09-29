@@ -29,6 +29,11 @@ TOKENSTORE = Path.home() / ".garminconnect"
 # Garmin gets unhappy if you hammer it. One wellness day = ~5 calls.
 PAUSE_BETWEEN_DAYS = 0.35
 
+# Lap splits cost one call per activity, so they're fetched once, kept in the
+# cache, and only for recent activities -- the week card is what shows them.
+LAP_WINDOW_DAYS = 45
+MAX_LAP_FETCHES = 40
+
 
 def dig(obj: Any, *keys: Any, default: Any = None) -> Any:
     """Walk nested dicts/lists without exploding on a missing or None link."""
@@ -126,6 +131,59 @@ def pull_activities(client: Garmin, start: date, end: date) -> dict[str, Any]:
             out[str(aid)] = trimmed
     print(f"{len(out)} found")
     return out
+
+
+def trim_lap(raw: dict[str, Any]) -> dict[str, Any]:
+    keep = {
+        "distance_m": raw.get("distance"),
+        "duration_s": raw.get("duration"),
+        "moving_s": raw.get("movingDuration"),
+        "avg_hr": raw.get("averageHR"),
+        "max_hr": raw.get("maxHR"),
+        "avg_speed_mps": raw.get("averageSpeed"),
+        "elev_gain_m": raw.get("elevationGain"),
+        "elev_loss_m": raw.get("elevationLoss"),
+        "run_cadence": raw.get("averageRunCadence"),
+        "avg_power": raw.get("averagePower"),
+        "calories": raw.get("calories"),
+        "swolf": raw.get("averageSwolf"),
+        "strokes": raw.get("totalNumberOfStrokes"),
+        "lengths": raw.get("numberOfActiveLengths"),
+        "intensity": raw.get("intensityType"),
+    }
+    return {k: v for k, v in keep.items() if v is not None}
+
+
+def pull_laps(client: Garmin, activities: dict[str, Any], since: date) -> None:
+    """Attach lap splits to recent activities that don't have them yet.
+
+    An activity is marked with "laps" (possibly an empty list) once fetched, so
+    it's never asked for again. A failed call leaves it unmarked and it's
+    retried on the next run.
+    """
+    cutoff = since.isoformat()
+    wanted = [
+        a for a in activities.values()
+        if "laps" not in a and a.get("activityId") and (a.get("start") or "")[:10] >= cutoff
+    ]
+    if not wanted:
+        print("Laps: cache already current")
+        return
+    wanted.sort(key=lambda a: a.get("start") or "", reverse=True)  # newest first
+    batch = wanted[:MAX_LAP_FETCHES]
+    got = 0
+    for a in batch:
+        try:
+            raw = client.get_activity_splits(a["activityId"]) or {}
+        except Exception as exc:
+            print(f"  laps for {a['activityId']} failed ({exc}) -- will retry next run")
+            continue
+        a["laps"] = [lap for lap in (trim_lap(l) for l in raw.get("lapDTOs") or []) if lap]
+        got += 1
+        time.sleep(PAUSE_BETWEEN_DAYS)
+    left = len(wanted) - got
+    print(f"Laps: fetched {got} activit{'y' if got == 1 else 'ies'}"
+          + (f", {left} left for later runs" if left else ""))
 
 
 # --------------------------------------------------------------------------
@@ -278,7 +336,13 @@ def main() -> int:
         print("Connected\n")
 
     activities = {} if args.refresh else load_json(DATA / "activities.json", {})
-    activities.update(pull_activities(client, act_start, end))
+    for aid, fresh in pull_activities(client, act_start, end).items():
+        # the summary is refetched every run; keep laps already downloaded
+        old = activities.get(aid) or {}
+        if "laps" in old:
+            fresh["laps"] = old["laps"]
+        activities[aid] = fresh
+    pull_laps(client, activities, end - timedelta(days=LAP_WINDOW_DAYS))
     save_json(DATA / "activities.json", activities)
 
     wellness = {} if args.refresh else load_json(DATA / "wellness.json", {})
