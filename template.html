@@ -283,12 +283,12 @@
 
   <section class="card" id="week-card" style="margin-top: 18px">
     <div class="week-head">
-      <h2 id="week-title">This week</h2>
+      <h2 id="week-title">Last 7 days</h2>
       <span class="range" id="week-range"></span>
       <div class="week-nav">
-        <button class="chip" id="week-prev" aria-label="Previous week">‹</button>
-        <button class="chip" id="week-now">This week</button>
-        <button class="chip" id="week-next" aria-label="Next week">›</button>
+        <button class="chip" id="week-prev" aria-label="Previous 7 days">‹</button>
+        <button class="chip" id="week-now">Today</button>
+        <button class="chip" id="week-next" aria-label="Next 7 days">›</button>
       </div>
     </div>
     <p class="week-totals" id="week-totals"></p>
@@ -377,7 +377,7 @@
 
   <section class="card">
     <h2>Long-run progression</h2>
-    <p class="sub">Longest single run each week, through race week. The line is race distance.</p>
+    <p class="sub">Longest single run each week over the last 60 days. The line is race distance.</p>
     <div class="chart" id="longrun-chart"></div>
     <p class="note" id="longrun-note"></p>
     <button class="tbl-toggle" data-table="longrun-table">Show data table</button>
@@ -385,23 +385,6 @@
   </section>
 
   <p class="section-label">Training · scoped by the range filter</p>
-
-  <section class="card">
-    <h2 id="vol-title">Weekly volume by sport</h2>
-    <p class="sub" id="vol-sub">Hours per week, Monday-start. Stacked to show total load and the mix inside it.</p>
-    <ul class="legend" id="vol-legend"></ul>
-    <div class="chart" id="vol-chart"></div>
-    <button class="tbl-toggle" data-table="vol-table">Show data table</button>
-    <div class="tbl-wrap" id="vol-table" hidden></div>
-  </section>
-
-  <section class="card" id="cal-card">
-    <h2>Training calendar</h2>
-    <p class="sub">Minutes of activity per day. Darker is more.</p>
-    <div class="chart" id="cal-chart"></div>
-    <button class="tbl-toggle" data-table="cal-table">Show data table</button>
-    <div class="tbl-wrap" id="cal-table" hidden></div>
-  </section>
 
   <section class="card">
     <h2>Recovery strip</h2>
@@ -430,15 +413,6 @@
     <div class="chart" id="zone-chart"></div>
     <button class="tbl-toggle" data-table="zone-table">Show data table</button>
     <div class="tbl-wrap" id="zone-table" hidden></div>
-  </section>
-
-  <section class="card">
-    <h2 id="bal-title">Intensity balance</h2>
-    <p class="sub" id="bal-sub">Share of running time spent easy (zones 1–2). The line is the 80% target for distance training — bars short of it mean the easy days aren't easy.</p>
-    <div class="chart" id="bal-chart"></div>
-    <p class="note" id="bal-note"></p>
-    <button class="tbl-toggle" data-table="bal-table">Show data table</button>
-    <div class="tbl-wrap" id="bal-table" hidden></div>
   </section>
 
   <section class="card">
@@ -997,14 +971,14 @@ function hms(sec) {
 }
 
 function renderWeek() {
-  const start = sundayOf(todayMidnight());
-  start.setDate(start.getDate() + weekOffset * 7);
-  const end = new Date(start); end.setDate(end.getDate() + 6);
   const today = todayMidnight();
+  // rolling window: the 6 days before the end day, then the end day (today when offset is 0)
+  const end = new Date(today); end.setDate(end.getDate() + weekOffset * 7);
+  const start = new Date(end); start.setDate(start.getDate() - 6);
 
-  $("week-title").textContent = weekOffset === 0 ? "This week" : weekOffset === -1 ? "Last week" : "Week of " + shortDate(start);
+  $("week-title").textContent = weekOffset === 0 ? "Last 7 days" : weekOffset === -1 ? "Previous 7 days" : "7 days to " + shortDate(end);
   $("week-range").textContent = `${shortDate(start)} – ${shortDate(end)}${end.getFullYear() !== today.getFullYear() ? ", " + end.getFullYear() : ""}`;
-  const first = acts.length ? sundayOf(parseDay(acts[0].date)) : start;
+  const first = acts.length ? parseDay(acts[0].date) : start;
   $("week-prev").disabled = start <= first;
   $("week-next").disabled = weekOffset >= 0;
   $("week-now").hidden = weekOffset === 0;
@@ -1021,7 +995,7 @@ function renderWeek() {
     cell.className = "day" + (+d === +today ? " today" : "");
     const name = document.createElement("div");
     name.className = "day-name";
-    const b = document.createElement("b"); b.textContent = DOW[i];
+    const b = document.createElement("b"); b.textContent = DOW[d.getDay()];
     const tag = document.createElement("span"); tag.className = "tag";
     tag.textContent = +d === +today ? "Today" : shortDate(d);
     name.append(b, tag);
@@ -1049,7 +1023,7 @@ function renderWeek() {
       const hr = document.createElement("div"); hr.className = "wo-hr";
       hr.textContent = a.avg_hr ? `Avg HR ${Math.round(a.avg_hr)}` : "No heart rate";
       btn.append(sp, main, hr);
-      btn.setAttribute("aria-label", `${sportName(a)} on ${DOW[i]} ${shortDate(d)}: ${val} ${unit}, ${hr.textContent}. Open full stats.`);
+      btn.setAttribute("aria-label", `${sportName(a)} on ${DOW[d.getDay()]} ${shortDate(d)}: ${val} ${unit}, ${hr.textContent}. Open full stats.`);
       btn.addEventListener("click", () => openActivity(a));
       wos.appendChild(btn);
     }
@@ -1061,7 +1035,7 @@ function renderWeek() {
   const secs = inWeek.reduce((s, a) => s + (a.dur_s || 0), 0);
   $("week-totals").textContent = inWeek.length
     ? `${inWeek.length} session${inWeek.length === 1 ? "" : "s"} · ${fmtDur(secs)} total` + (runMi ? ` · ${fmtNum(runMi, 1)} running miles` : "") + " · click a workout for full stats"
-    : "No workouts logged this week yet.";
+    : "No workouts logged in these 7 days.";
 }
 
 function openActivity(a) {
@@ -1209,8 +1183,6 @@ function renderKPIs(view) {
   const tiles = [
     { label: "Sessions", value: view.acts.length, prev: view.prevActs.length, dec: 0 },
     { label: "Run distance", unit: "mi", value: distOf(view.acts, "run") / M_PER_MI, prev: distOf(view.prevActs, "run") / M_PER_MI, dec: 1 },
-    { label: "Bike distance", unit: "mi", value: distOf(view.acts, "bike") / M_PER_MI, prev: distOf(view.prevActs, "bike") / M_PER_MI, dec: 1 },
-    { label: "Swim distance", unit: "yd", value: distOf(view.acts, "swim") / M_PER_YD, prev: distOf(view.prevActs, "swim") / M_PER_YD, dec: 0 },
     { label: "Easy share (target 80%)", unit: "%", value: easyShareOf(view.acts).pct, prev: easyShareOf(view.prevActs).pct, dec: 1, points: true },
     { label: "VO₂ max", value: avg(view.well.slice(-7), (d) => d.vo2max_run), prev: avg(view.prevWell.slice(-7), (d) => d.vo2max_run), dec: 1, spark: view.well.map((d) => d.vo2max_run) },
     { label: "Resting HR", unit: "bpm", value: avg(wornNights(view.well), (d) => d.resting_hr), prev: avg(wornNights(view.prevWell), (d) => d.resting_hr), dec: 0, lowerBetter: true, spark: wornNights(view.well).map((d) => d.resting_hr) },
@@ -1402,38 +1374,7 @@ function render() {
   renderWeek();
   renderKPIs(view);
 
-  $("vol-title").textContent = `${bucket} volume by sport`;
-  $("vol-sub").textContent = daily
-    ? "Hours per day. Stacked to show total load and the mix inside it."
-    : "Hours per week, Monday-start. Stacked to show total load and the mix inside it.";
   $("zone-title").textContent = `${bucket} time in heart-rate zones`;
-  // a one-column calendar says nothing the daily bars don't already say
-  $("cal-card").hidden = daily;
-
-  // a sport with nothing in range gets no legend row; hues stay bound to the
-  // sport, so a survivor is never repainted when the range changes
-  const active = SPORTS.filter((s) => rows.some((r) => r.values[s.key] > 0));
-  const shown = active.length ? active : SPORTS;
-
-  renderLegend($("vol-legend"), shown, "rect");
-  stackedColumns($("vol-chart"), {
-    rows, series: shown.map((s) => s.key),
-    colorOf: (k) => SPORT_BY_KEY[k].color,
-    labelOf: (k) => SPORT_BY_KEY[k].label,
-    fmtTick: (v) => fmtNum(v, v % 1 ? 1 : 0) + "h",
-    fmtValue: (v) => fmtNum(v, 1) + " h",
-    ariaLabel: `${bucket} training hours by sport`,
-  });
-  buildTable($("vol-table"), [bucketCol, ...shown.map((s) => s.label + " (h)"), "Total (h)"],
-    rows.map((r) => [r.t.toLocaleDateString(), ...shown.map((s) => fmtNum(r.values[s.key], 1)),
-      fmtNum(shown.reduce((a, s) => a + r.values[s.key], 0), 1)]));
-
-  if (!daily) heatmap($("cal-chart"), view);
-  const dayTotals = new Map();
-  for (const a of view.acts) dayTotals.set(a.date, (dayTotals.get(a.date) || 0) + (a.dur_s || 0) / 60);
-  buildTable($("cal-table"), ["Date", "Minutes", "Sessions"],
-    [...dayTotals.entries()].sort().reverse().map(([d, m]) =>
-      [d, fmtNum(m), String(view.acts.filter((a) => a.date === d).length)]));
 
   const zoneRows = rows.map((r) => ({ label: r.label, tipLabel: r.tipLabel, values: r.zones }));
   renderLegend($("zone-legend"), ZONES, "rect");
@@ -1448,39 +1389,6 @@ function render() {
   buildTable($("zone-table"), [bucketCol, ...ZONES.map((z) => z.label), "Total"],
     zoneRows.map((r, i) => [rows[i].t.toLocaleDateString(), ...ZONES.map((z) => fmtDur(r.values[z.key] * 3600)),
       fmtDur(ZONES.reduce((a, z) => a + r.values[z.key], 0) * 3600)]));
-
-  $("bal-title").textContent = `Intensity balance · ${bucket.toLowerCase()}`;
-  const balRows = rows.map((r) => {
-    const s = easySplit(r.runZones);
-    return { label: r.label, tipLabel: r.tipLabel, split: s, values: { easy: s.pct ?? 0 } };
-  });
-  stackedColumns($("bal-chart"), {
-    rows: balRows, series: ["easy"],
-    colorOf: () => "--intensity",
-    labelOf: () => "Easy",
-    scale: { max: 100, ticks: [0, 20, 40, 60, 80, 100] },
-    reference: { value: 80, label: "80% target" },
-    fmtTick: (v) => v + "%",
-    fmtValue: (v) => fmtNum(v, 0) + "%",
-    tipRows: (r) => r.split.total > 0 ? [
-      { color: css("--intensity"), value: fmtNum(r.split.pct, 0) + "%", name: "easy share" },
-      { color: null, value: fmtDur(r.split.easy * 3600), name: "zones 1–2" },
-      { color: null, value: fmtDur(r.split.hard * 3600), name: "zones 3–5" },
-    ] : [{ color: null, value: "—", name: "no running" }],
-    ariaLabel: "Share of running time spent easy, against the 80% target",
-  });
-
-  const overall = easyShareOf(view.acts);
-  const weeksAtTarget = balRows.filter((r) => r.split.pct != null && r.split.pct >= 80).length;
-  const weeksRun = balRows.filter((r) => r.split.total > 0).length;
-  $("bal-note").textContent = overall.total > 0
-    ? `${fmtNum(overall.pct, 1)}% of ${fmtNum(overall.total, 1)} running hours in this range was easy — ${fmtDur(overall.easy * 3600)} easy against ${fmtDur(overall.hard * 3600)} at zone 3 or above. ${weeksAtTarget} of ${weeksRun} ${daily ? "days" : "weeks"} with running hit the 80% target. Zone boundaries come from your Garmin profile, so this is only as accurate as the max heart rate set there — yours measures 187.`
-    : "No running with heart-rate data in this range.";
-  buildTable($("bal-table"), [bucketCol, "Easy (Z1–2)", "Hard (Z3–5)", "Total", "Easy share", "vs 80% target"],
-    balRows.map((r, i) => [rows[i].t.toLocaleDateString(),
-      fmtDur(r.split.easy * 3600), fmtDur(r.split.hard * 3600), fmtDur(r.split.total * 3600),
-      r.split.pct == null ? "—" : fmtNum(r.split.pct, 0) + "%",
-      r.split.pct == null ? "—" : (r.split.pct - 80 >= 0 ? "+" : "−") + fmtNum(Math.abs(r.split.pct - 80), 0) + " pts"]));
 
   renderRace();
   renderStrip(view);
@@ -1942,12 +1850,14 @@ function renderEffortLog(longRuns) {
 function renderLongRun() {
   if (!runsAll.length) return;
   const raceMon = mondayOf(RACE_DAY);
-  const start = mondayOf(parseDay(runsAll[0].date));
-  const end = raceMon > TODAY ? raceMon : mondayOf(TODAY);
+  const cutoff = new Date(TODAY); cutoff.setDate(cutoff.getDate() - 59);
+  const recent = runsAll.filter((a) => parseDay(a.date) >= cutoff);
+  const start = mondayOf(cutoff);
+  const end = mondayOf(TODAY);
   const rows = [];
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 7)) rows.push({ t: new Date(d), longest: null });
   const byKey = new Map(rows.map((r) => [dayKey(r.t), r]));
-  for (const a of runsAll) { const r = byKey.get(dayKey(mondayOf(parseDay(a.date)))); if (r && (!r.longest || milesOf(a) > milesOf(r.longest))) r.longest = a; }
+  for (const a of recent) { const r = byKey.get(dayKey(mondayOf(parseDay(a.date)))); if (r && (!r.longest || milesOf(a) > milesOf(r.longest))) r.longest = a; }
   rows.forEach((r) => {
     r.label = shortDate(r.t);
     r.tipLabel = "Week of " + r.t.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
@@ -1962,14 +1872,14 @@ function renderLongRun() {
       { color: null, value: fmtPace(paceOf(r.longest)) + " /mi", name: "pace" },
       { color: null, value: r.longest.avg_hr ? Math.round(r.longest.avg_hr) + " bpm" : "—", name: "avg HR" },
     ] : [{ color: null, value: "—", name: r.t > TODAY ? "upcoming" : "no running" }],
-    ariaLabel: "Longest run each week against race distance",
+    ariaLabel: "Longest run each week over the last 60 days against race distance",
   });
   const longWeeks = rows.filter((r) => r.longest && milesOf(r.longest) >= LONG_MI);
   const last = longWeeks.length ? longWeeks[longWeeks.length - 1] : null;
   const weeksTo = Math.round((raceMon - mondayOf(TODAY)) / 604800000);
   $("longrun-note").textContent = (last
-    ? `${longWeeks.length} weeks with a run of ${LONG_MI} mi or more; the last was the week of ${shortDate(last.t)} (${fmtNum(milesOf(last.longest), 1)} mi), ${Math.round((mondayOf(TODAY) - last.t) / 604800000)} weeks ago. `
-    : `No week has had a run of ${LONG_MI} mi or more. `) + (weeksTo >= 0 ? `Race week is ${weeksTo} week${weeksTo === 1 ? "" : "s"} away.` : "");
+    ? `${longWeeks.length} weeks with a run of ${LONG_MI} mi or more; the last was the week of ${shortDate(last.t)} (${fmtNum(milesOf(last.longest), 1)} mi), ${((w) => w === 0 ? "this week" : w === 1 ? "1 week ago" : w + " weeks ago")(Math.round((mondayOf(TODAY) - last.t) / 604800000))}. `
+    : `No run of ${LONG_MI} mi or more in the last 60 days. `) + (weeksTo >= 0 ? `Race week is ${weeksTo} week${weeksTo === 1 ? "" : "s"} away.` : "");
   buildTable($("longrun-table"), ["Week of", "Longest run", "Pace", "Avg HR", "Activity"],
     rows.slice().reverse().map((r) => [r.t.toLocaleDateString(), r.longest ? fmtNum(milesOf(r.longest), 2) + " mi" : "—",
       r.longest ? fmtPace(paceOf(r.longest)) : "—", r.longest && r.longest.avg_hr ? String(Math.round(r.longest.avg_hr)) : "—", r.longest ? r.longest.name : ""]));
