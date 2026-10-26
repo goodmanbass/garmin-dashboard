@@ -337,7 +337,7 @@
 
   <section class="card">
     <h2>Garmin race predictor vs actual efforts</h2>
-    <p class="sub">The watch's daily half-marathon prediction, against the goal and against what your long runs actually project to. The gap between the line and the dots is how optimistic the predictor is for you.</p>
+    <p class="sub">The watch's daily race prediction, against the goal and against what your long runs actually project to. The gap between the line and the dots is how optimistic the predictor is for you.</p>
     <ul class="legend" id="pred-legend"></ul>
     <div class="chart" id="pred-chart"></div>
     <p class="note" id="pred-note"></p>
@@ -357,7 +357,7 @@
 
   <section class="card">
     <h2>Goal-pace frontier</h2>
-    <p class="sub">Every run, pace against distance. The step line is the fastest pace you have held at each distance or longer; the gap between it and the goal line at 13.1 mi is the work left.</p>
+    <p class="sub">Every run, pace against distance. The step line is the fastest pace you have held at each distance or longer; the gap between it and the goal line at race distance is the work left.</p>
     <ul class="legend" id="frontier-legend"></ul>
     <div class="chart" id="frontier-chart"></div>
     <p class="note" id="frontier-note"></p>
@@ -366,8 +366,8 @@
   </section>
 
   <section class="card">
-    <h2 id="effort-title">Half-marathon efforts</h2>
-    <p class="sub" id="effort-sub">Each run of 12 miles or more, projected to a 13.1-mile finish at the pace you actually ran, beside what Garmin was predicting that same day. The solid line is the goal.</p>
+    <h2 id="effort-title">Race-distance efforts</h2>
+    <p class="sub" id="effort-sub">Each run of 12 miles or more, projected to a race-distance finish at the pace you actually ran, beside what Garmin was predicting that same day. The solid line is the goal.</p>
     <ul class="legend" id="effort-legend"></ul>
     <div class="chart" id="effort-chart"></div>
     <p class="note" id="effort-note"></p>
@@ -1574,12 +1574,20 @@ const RACE_DAY = GOAL.date ? parseDay(GOAL.date) : null;
 const GOAL_S = GOAL.goal_time_s || 6900;
 const HM_MI = (GOAL.distance_m || 21097.5) / M_PER_MI;
 const GOAL_PACE = GOAL_S / HM_MI;                 // seconds per mile
+// race-aware predictor: a marathon-length goal reads Garmin's marathon
+// prediction (scaled to the exact distance), anything shorter the half
+const IS_FULL = HM_MI > 20;
+const PRED_KEY = IS_FULL ? "marathon_s" : "hm_s";
+const PRED_SCALE = HM_MI / (IS_FULL ? 26.2188 : 13.1094);
+const predT = (p) => p && p[PRED_KEY] ? p[PRED_KEY] * PRED_SCALE : null;
+const RACE_KIND = IS_FULL ? "marathon" : "half-marathon";
+const RACE_DIST = fmtNum(HM_MI, HM_MI % 1 ? 2 : 0) + " mi";
 const EASY_HR = GOAL.easy_hr_max || 152;
 const LONG_MI = GOAL.long_run_mi || 12;
 const TODAY = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })();
 
 const PRED = DATA.predictions || {};
-const predDates = Object.keys(PRED).filter((d) => PRED[d] && PRED[d].hm_s).sort();
+const predDates = Object.keys(PRED).filter((d) => predT(PRED[d])).sort();
 
 const runsAll = acts.filter((a) => a.sport === "run" && a.dist_m > 0 && a.dur_s > 0);
 const milesOf = (a) => a.dist_m / M_PER_MI;
@@ -1632,9 +1640,9 @@ function renderRace() {
   kpiTile(host, daysTo >= 0 ? "Days to race" : "Days since race", String(Math.abs(daysTo)), "", daysTo >= 0 ? `${fmtNum(daysTo / 7, 1)} weeks` : "");
   kpiTile(host, "Goal", fmtClock(GOAL_S), "", `${fmtPace(GOAL_PACE)} /mi`);
   const latestPred = predDates.length ? PRED[predDates[predDates.length - 1]] : null;
-  kpiTile(host, "Garmin predicts", latestPred ? fmtClock(latestPred.hm_s) : "—", "",
-    latestPred ? `${fmtPace(latestPred.hm_s / HM_MI)} /mi · as of ${shortDate(parseDay(predDates[predDates.length - 1]))}` : "run garmin_pull.py",
-    latestPred ? { text: fmtSigned(latestPred.hm_s - GOAL_S) + " vs goal", cls: latestPred.hm_s <= GOAL_S ? "up" : "down" } : null);
+  kpiTile(host, "Garmin predicts", latestPred ? fmtClock(predT(latestPred)) : "—", "",
+    latestPred ? `${fmtPace(predT(latestPred) / HM_MI)} /mi · as of ${shortDate(parseDay(predDates[predDates.length - 1]))}` : "run garmin_pull.py",
+    latestPred ? { text: fmtSigned(predT(latestPred) - GOAL_S) + " vs goal", cls: predT(latestPred) <= GOAL_S ? "up" : "down" } : null);
   kpiTile(host, "Best long run, projected", projected ? fmtClock(projected) : "—", "",
     best ? `${fmtPace(paceOf(best))} /mi · ${shortDate(parseDay(best.date))}` : "no long runs yet",
     projected ? { text: fmtSigned(projected - GOAL_S) + " vs goal", cls: projected <= GOAL_S ? "up" : "down" } : null);
@@ -1657,9 +1665,9 @@ function renderRace() {
    runner has actually held over the distance; showing both on one axis
    makes that gap visible rather than leaving the reader to trust either. */
 function renderPrediction(longRuns) {
-  const pts = predDates.map((d) => ({ x: parseDay(d).getTime(), y: PRED[d].hm_s, d }));
+  const pts = predDates.map((d) => ({ x: parseDay(d).getTime(), y: predT(PRED[d]), d }));
   const efforts = longRuns.map((a) => ({ x: T(a), y: paceOf(a) * HM_MI, color: "--sport-run", a }));
-  renderLegend($("pred-legend"), [{ label: "Garmin half-marathon prediction", color: "--intensity" }, { label: "Long run, projected to 13.1", color: "--sport-run" }], "rect");
+  renderLegend($("pred-legend"), [{ label: `Garmin ${RACE_KIND} prediction`, color: "--intensity" }, { label: `Long run, projected to ${RACE_DIST}`, color: "--sport-run" }], "rect");
   $("pred-legend").firstChild.firstChild.className = "key-line";
   $("pred-legend").lastChild.firstChild.className = "key-dot";
   if (!pts.length) {
@@ -1684,20 +1692,20 @@ function renderPrediction(longRuns) {
       const key = dayKey(parseDay(e.a.date)), p = PRED[key];
       return { head: `${longDate(parseDay(e.a.date))} · ${e.a.name}`, rows: [
         { color: css("--sport-run"), value: fmtClock(e.y), name: "projected from run" },
-        { color: css("--intensity"), value: p ? fmtClock(p.hm_s) : "—", name: "Garmin predicted that day" },
+        { color: css("--intensity"), value: p ? fmtClock(predT(p)) : "—", name: "Garmin predicted that day" },
         { color: null, value: fmtPace(paceOf(e.a)) + " /mi", name: `${fmtNum(milesOf(e.a), 1)} mi` },
       ] };
     },
-    ariaLabel: "Garmin's half-marathon prediction over time against the goal and actual long-run projections",
+    ariaLabel: `Garmin's ${RACE_KIND} prediction over time against the goal and actual long-run projections`,
   });
   const first = pts[0], last = pts[pts.length - 1];
-  const gaps = efforts.map((e) => { const p = PRED[dayKey(parseDay(e.a.date))]; return p ? e.y - p.hm_s : null; }).filter((g) => g != null);
+  const gaps = efforts.map((e) => { const p = PRED[dayKey(parseDay(e.a.date))]; return p ? e.y - predT(p) : null; }).filter((g) => g != null);
   const meanGap = gaps.length ? gaps.reduce((s, g) => s + g, 0) / gaps.length : null;
   $("pred-note").textContent = `Garmin predicts ${fmtClock(last.y)} today (${fmtSigned(last.y - GOAL_S)} vs goal), from ${fmtClock(first.y)} on ${shortDate(new Date(first.x))}. ` +
     (meanGap != null ? `On the ${gaps.length} days you ran ${LONG_MI}+ miles, the run projected ${fmtSigned(meanGap)} slower than the predictor said on average — the predictor assumes race-day effort, a taper and cool conditions, and none of those long runs were races.` : "") +
     " The prediction is Garmin's, driven by VO₂ max and recent training; it is the only training-status number the Forerunner 165 produces.";
-  buildTable($("pred-table"), ["Date", "5K", "10K", "Half", "Half vs goal", "Marathon"],
-    predDates.slice().reverse().map((d) => { const p = PRED[d]; return [d, fmtClock(p["5k_s"]), fmtClock(p["10k_s"]), fmtClock(p.hm_s), fmtSigned(p.hm_s - GOAL_S), fmtClock(p.marathon_s)]; }));
+  buildTable($("pred-table"), ["Date", "5K", "10K", "Half", "Marathon", "Race vs goal"],
+    predDates.slice().reverse().map((d) => { const p = PRED[d]; return [d, fmtClock(p["5k_s"]), fmtClock(p["10k_s"]), fmtClock(p.hm_s), fmtClock(p.marathon_s), fmtSigned(predT(p) - GOAL_S)]; }));
 }
 
 function renderRamp(daysTo) {
@@ -1761,12 +1769,13 @@ function renderFrontier() {
   const maxX = Math.max(HM_MI + 0.5, ...runs.map(milesOf));
 
   // Garmin's current predictions as paces at their distances; the marathon
-  // sits off the right edge, so only 5K / 10K / half are drawn
+  // is drawn too when the goal race is a full
   const latest = predDates.length ? PRED[predDates[predDates.length - 1]] : null;
   const predPts = latest ? [
     { x: 5000 / M_PER_MI, y: latest["5k_s"] / (5000 / M_PER_MI), label: "5K" },
     { x: 10000 / M_PER_MI, y: latest["10k_s"] / (10000 / M_PER_MI), label: "10K" },
-    { x: HM_MI, y: latest.hm_s / HM_MI, label: "Half" },
+    { x: 13.1094, y: latest.hm_s / 13.1094, label: "Half" },
+    ...(IS_FULL ? [{ x: 26.2188, y: latest.marathon_s / 26.2188, label: "Marathon" }] : []),
   ].filter((p) => p.y) : [];
 
   // run-derived marks in run blue; Garmin's predictor keeps the purple it has elsewhere
@@ -1796,21 +1805,21 @@ function renderFrontier() {
     ] },
     ariaLabel: "Pace against distance for every run, with the best-pace frontier, Garmin's predicted paces and the goal pace",
   });
-  const predHM = predPts.find((p) => p.label === "Half");
+  const predHM = predPts.find((p) => p.label === (IS_FULL ? "Marathon" : "Half"));
   $("frontier-note").textContent = (bestHM
     ? `Fastest pace held over race distance: ${fmtPace(paceOf(bestHM))} /mi on ${shortDate(parseDay(bestHM.date))} — ${fmtNum(Math.abs(paceOf(bestHM) - GOAL_PACE), 0)} s/mi ${paceOf(bestHM) > GOAL_PACE ? "slower" : "faster"} than goal. ${frontier.filter((a) => paceOf(a) <= GOAL_PACE).length ? `Goal pace has been held out to ${fmtNum(milesOf(frontier.filter((a) => paceOf(a) <= GOAL_PACE).pop()), 1)} mi.` : "Goal pace has not yet been held over 1 mile or more."}`
     : "No run at race distance yet.") +
-    (predHM && bestHM ? ` Garmin's predictor puts the half at ${fmtPace(predHM.y)} /mi, ${fmtNum(Math.abs(paceOf(bestHM) - predHM.y), 0)} s/mi ${predHM.y < paceOf(bestHM) ? "faster" : "slower"} than you have held over the distance; its marathon prediction sits beyond the right edge.` : "");
+    (predHM && bestHM ? ` Garmin's predictor puts the ${IS_FULL ? "marathon" : "half"} at ${fmtPace(predHM.y)} /mi, ${fmtNum(Math.abs(paceOf(bestHM) - predHM.y), 0)} s/mi ${predHM.y < paceOf(bestHM) ? "faster" : "slower"} than you have held over the distance.` : "");
   buildTable($("frontier-table"), ["Date", "Activity", "Distance", "Pace", "Avg HR", "On frontier"],
     runs.slice().reverse().map((a) => [a.date, a.name, fmtNum(milesOf(a), 2) + " mi", fmtPace(paceOf(a)), a.avg_hr ? String(Math.round(a.avg_hr)) : "—", onFrontier.has(a) ? "yes" : ""]));
 }
 
 function renderEffortLog(longRuns) {
-  $("effort-title").textContent = `Half-marathon efforts · runs of ${LONG_MI} mi or more`;
+  $("effort-title").textContent = `${RACE_KIND[0].toUpperCase() + RACE_KIND.slice(1)} efforts · runs of ${LONG_MI} mi or more`;
   const rows = longRuns.map((a) => ({
     a, label: shortDate(parseDay(a.date)), tipLabel: `${longDate(parseDay(a.date))} · ${a.name}`,
     proj: paceOf(a) * HM_MI, values: { proj: (paceOf(a) * HM_MI) / 60 },
-    pred: (PRED[a.date] || {}).hm_s || null,          // Garmin's half prediction on the day
+    pred: predT(PRED[a.date]),          // Garmin's race prediction on the day
   }));
   const anyPred = rows.some((r) => r.pred);
   renderLegend($("effort-legend"), [{ label: "Projected finish", color: "--sport-run" }]
@@ -1832,7 +1841,7 @@ function renderEffortLog(longRuns) {
       { color: null, value: fmtNum(milesOf(r.a), 2) + " mi", name: "actual distance" },
       { color: null, value: r.a.avg_hr ? Math.round(r.a.avg_hr) + " bpm" : "—", name: "avg HR" },
     ],
-    ariaLabel: "Projected half-marathon finish for each long run against the goal time and Garmin's prediction that day",
+    ariaLabel: `Projected ${RACE_KIND} finish for each long run against the goal time and Garmin's prediction that day`,
   });
   const best = rows.length ? rows.reduce((b, r) => r.proj < b.proj ? r : b) : null;
   const withPred = rows.filter((r) => r.pred);
@@ -1842,7 +1851,7 @@ function renderEffortLog(longRuns) {
     ? `${rows.length} run${rows.length === 1 ? "" : "s"} of ${LONG_MI} mi or more. Best projection ${fmtClock(best.proj)} on ${best.label} (${fmtSigned(best.proj - GOAL_S)} vs goal). Most recent: ${fmtClock(rows[rows.length - 1].proj)} on ${rows[rows.length - 1].label}.` +
       (meanGap != null ? ` The runs came in ${fmtSigned(meanGap)} ${meanGap >= 0 ? "slower" : "faster"} than the predictor on average; the closest was ${closest.label} (${fmtSigned(closest.proj - closest.pred)}). ${withPred.filter((r) => r.proj <= r.pred).length} of ${withPred.length} matched or beat it.` : "")
     : `No runs of ${LONG_MI} mi or more yet.`;
-  buildTable($("effort-table"), ["Date", "Activity", "Distance", "Time", "Pace", "Avg HR", "Projected 13.1", "vs goal", "Garmin predicted", "Run vs predictor"],
+  buildTable($("effort-table"), ["Date", "Activity", "Distance", "Time", "Pace", "Avg HR", `Projected ${RACE_DIST}`, "vs goal", "Garmin predicted", "Run vs predictor"],
     rows.slice().reverse().map((r) => [r.a.date, r.a.name, fmtNum(milesOf(r.a), 2) + " mi", fmtDur(r.a.dur_s), fmtPace(paceOf(r.a)), r.a.avg_hr ? String(Math.round(r.a.avg_hr)) : "—", fmtClock(r.proj), fmtSigned(r.proj - GOAL_S),
       r.pred ? fmtClock(r.pred) : "—", r.pred ? fmtSigned(r.proj - r.pred) : "—"]));
 }
