@@ -152,9 +152,10 @@ def main() -> int:
 
     # optional day-by-day training plan (see README); the card hides without it
     plan = load(DATA / "plan.json") if (DATA / "plan.json").exists() else None
+    plan2 = load(DATA / "plan2.json") if (DATA / "plan2.json").exists() else None  # optional alternate
 
     payload = {"activities": activities, "wellness": wellness, "meta": meta,
-               "goal": goal, "predictions": dict(sorted(preds.items())), "plan": plan}
+               "goal": goal, "predictions": dict(sorted(preds.items())), "plan": plan, "plan2": plan2}
     blob = json.dumps(payload, separators=(",", ":"))
 
     template = TEMPLATE.read_text(encoding="utf-8")

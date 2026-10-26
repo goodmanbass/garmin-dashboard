@@ -216,7 +216,8 @@
   .pday { border: 1px solid var(--grid); border-radius: 8px; padding: 6px 7px 7px; font-size: 11.5px; min-width: 0; display: flex; flex-direction: column; gap: 2px; border-top: 3px solid var(--grid); }
   .pday.today, .day.today { outline: 2px solid var(--sport-run); outline-offset: 1px; background: color-mix(in srgb, var(--sport-run) 12%, transparent); }
   .pday.today .pd-date span, .pday.today .pd-date b { color: var(--sport-run); font-weight: 700; }
-  #plan-card.collapsed .plan-wk.later { display: none; }
+  #plan-card.collapsed .plan-wk.later, #plan2-card.collapsed .plan-wk.later { display: none; }
+  .pday.k-ml { border-top-color: var(--sport-bike, #1baa9c); }
   .pday .pd-date { color: var(--text-muted); display: flex; justify-content: space-between; gap: 4px; }
   .pday .pd-title { font-weight: 600; color: var(--text-primary); font-size: 12px; line-height: 1.25; }
   .pday .pd-mi { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
@@ -329,6 +330,18 @@
     <div class="plan-key" id="plan-key"></div>
     <div id="plan-weeks"></div>
     <p class="note">Top stripe: red hard speed · purple tempo · green marathon pace · blue long run. Under each past day, what the watch logged for running that day: green when you hit at least 90% of the planned miles. Hover a day for the full workout.</p>
+  </section>
+
+  <section class="card" id="plan2-card" hidden>
+    <div class="week-head">
+      <h2 id="plan2-title">Alternate plan</h2>
+      <span class="range" id="plan2-range"></span>
+      <div class="week-nav"><button class="chip" id="plan2-toggle" aria-expanded="false">Show all weeks</button><button class="chip" id="plan2-jump">Jump to this week</button></div>
+    </div>
+    <p class="week-totals" id="plan2-totals"></p>
+    <div class="plan-key" id="plan2-key"></div>
+    <div id="plan2-weeks"></div>
+    <p class="note">Top stripe: red VO2 / tune-up · purple lactate threshold · green marathon pace · blue long run · orange medium-long. Under each past day, what the watch logged for running that day: green when you hit at least 90% of the planned miles. Hover a day for the full workout.</p>
   </section>
 
   <dialog class="act" id="act-dialog" aria-labelledby="act-title">
@@ -1205,17 +1218,16 @@ function openActivity(a) {
 
 /* ------------------------------------------------------------ render */
 /* ------------------------------------------------------- training plan */
-function renderPlan() {
-  const P = DATA.plan;
+function renderPlan(P, pre, store) {
   if (!P || !P.days || !P.days.length) return;
-  $("plan-card").hidden = false;
-  $("plan-title").textContent = P.name || "Training plan";
+  $(pre + "-card").hidden = false;
+  $(pre + "-title").textContent = P.name || "Training plan";
   const first = parseDay(P.days[0].date), last = parseDay(P.days[P.days.length - 1].date);
-  $("plan-range").textContent = `${shortDate(first)} – ${shortDate(last)}, ${last.getFullYear()}`;
+  $(pre + "-range").textContent = `${shortDate(first)} – ${shortDate(last)}, ${last.getFullYear()}`;
   const today = todayMidnight();
   const runMi = (key) => (actsByDate.get(key) || []).filter((a) => a.sport === "run").reduce((s, a) => s + (a.dist_m || 0), 0) / M_PER_MI;
 
-  const key = $("plan-key"); key.replaceChildren();
+  const key = $(pre + "-key"); key.replaceChildren();
   for (const [k, v] of P.key || []) {
     const d = document.createElement("div"); const b = document.createElement("b"); b.textContent = k + ": ";
     d.append(b, v); key.appendChild(d);
@@ -1223,7 +1235,7 @@ function renderPlan() {
   const notes = new Map((P.weeks || []).map((w) => [w.week, w.note]));
   const byWeek = new Map();
   for (const d of P.days) { if (!byWeek.has(d.week)) byWeek.set(d.week, []); byWeek.get(d.week).push(d); }
-  const host = $("plan-weeks"); host.replaceChildren();
+  const host = $(pre + "-weeks"); host.replaceChildren();
   let planned = 0, done = 0, curEl = null, curWeek = null;
   for (const [wk, list] of byWeek) {
     const wkPlan = list.reduce((s, d) => s + d.mi, 0);
@@ -1266,21 +1278,21 @@ function renderPlan() {
   const boxes = [...host.children];
   boxes.forEach((b, i) => b.classList.toggle("later", keepFrom != null && (i + 1 < keepFrom || i + 1 > keepFrom + 1)));
   const hiddenN = boxes.filter((b) => b.classList.contains("later")).length;
-  const card = $("plan-card"), tog = $("plan-toggle");
+  const card = $(pre + "-card"), tog = $(pre + "-toggle");
   const setCollapsed = (c) => {
     card.classList.toggle("collapsed", c);
     tog.textContent = c ? `Show all ${boxes.length} weeks` : "Show this week + next";
     tog.setAttribute("aria-expanded", String(!c));
-    try { localStorage.setItem("planCollapsed", c ? "1" : "0"); } catch (e) {}
+    try { localStorage.setItem(store, c ? "1" : "0"); } catch (e) {}
   };
   tog.hidden = !hiddenN;
-  let saved = null; try { saved = localStorage.getItem("planCollapsed"); } catch (e) {}
+  let saved = null; try { saved = localStorage.getItem(store); } catch (e) {}
   setCollapsed(hiddenN > 0 && saved !== "0");
   tog.onclick = () => setCollapsed(!card.classList.contains("collapsed"));
   const daysLeft = Math.round((last - today) / 86400000);
-  $("plan-totals").textContent = `${byWeek.size} weeks · ${fmtNum(planned, 0)} mi planned` + (curWeek ? ` · now in week ${curWeek}` : "") + (daysLeft >= 0 ? ` · ${daysLeft} days to race` : "");
-  $("plan-jump").hidden = !curEl;
-  $("plan-jump").onclick = () => curEl && curEl.scrollIntoView({ behavior: "smooth", block: "start" });
+  $(pre + "-totals").textContent = `${byWeek.size} weeks · ${fmtNum(planned, 0)} mi planned` + (curWeek ? ` · now in week ${curWeek}` : "") + (daysLeft >= 0 ? ` · ${daysLeft} days to race` : "");
+  $(pre + "-jump").hidden = !curEl;
+  $(pre + "-jump").onclick = () => curEl && curEl.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function renderKPIs(view) {
@@ -1487,7 +1499,8 @@ function render() {
   const bucketCol = daily ? "Day" : "Week of";
 
   renderWeek();
-  renderPlan();
+  renderPlan(DATA.plan, "plan", "planCollapsed");
+  renderPlan(DATA.plan2, "plan2", "plan2Collapsed");
   renderKPIs(view);
 
   $("zone-title").textContent = `${bucket} time in heart-rate zones`;

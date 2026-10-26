@@ -92,7 +92,7 @@ Drop a `data\plan.json` in and the dashboard adds a day-by-day plan card. Each p
 }
 ```
 
-`kind` sets the colour stripe: `easy`, `speed`, `tempo`, `mp` (marathon pace), `long`, `rest`, `race`. Hover a day to see its `detail`.
+`kind` sets the colour stripe: `easy`, `speed`, `tempo`, `ml` (medium-long), `mp` (marathon pace), `long`, `rest`, `race`. An optional `data\\plan2.json` in the same format shows as a second, alternate plan card. Hover a day to see its `detail`.
 
 ---
 
