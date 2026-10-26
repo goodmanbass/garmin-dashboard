@@ -76,6 +76,24 @@ The race card stays empty until you create `data\goal.json`. For example:
 
 Then run `python build_dashboard.py` again.
 
+## 6. Training plan card (optional)
+
+Drop a `data\plan.json` in and the dashboard adds a day-by-day plan card. Each past day shows what you actually ran next to what was planned (green when you hit 90%+). Without the file, the card stays hidden.
+
+```json
+{
+  "name": "My marathon plan",
+  "weeks": [{"week": 1, "note": "Recovery week"}],
+  "key": [["Tempo", "3 x 1 mi at half-marathon pace, 2 min jog"]],
+  "days": [
+    {"date": "2027-01-04", "week": 1, "kind": "easy", "title": "6 easy", "mi": 6, "detail": "HR under 150"},
+    {"date": "2027-01-05", "week": 1, "kind": "speed", "title": "6 x 800", "mi": 7.5, "detail": "400 m jog between"}
+  ]
+}
+```
+
+`kind` sets the colour stripe: `easy`, `speed`, `tempo`, `mp` (marathon pace), `long`, `rest`, `race`. Hover a day to see its `detail`.
+
 ---
 
 ## Mac / Linux

@@ -150,8 +150,11 @@ def main() -> int:
     # Garmin's daily race predictor; absent until garmin_pull.py has run once
     preds = load(DATA / "race_predictions.json") if (DATA / "race_predictions.json").exists() else {}
 
+    # optional day-by-day training plan (see README); the card hides without it
+    plan = load(DATA / "plan.json") if (DATA / "plan.json").exists() else None
+
     payload = {"activities": activities, "wellness": wellness, "meta": meta,
-               "goal": goal, "predictions": dict(sorted(preds.items()))}
+               "goal": goal, "predictions": dict(sorted(preds.items())), "plan": plan}
     blob = json.dumps(payload, separators=(",", ":"))
 
     template = TEMPLATE.read_text(encoding="utf-8")
