@@ -214,7 +214,9 @@
   .plan-wk.current { border-left: 3px solid var(--sport-run); padding-left: 10px; margin-left: -13px; }
   .plan-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
   .pday { border: 1px solid var(--grid); border-radius: 8px; padding: 6px 7px 7px; font-size: 11.5px; min-width: 0; display: flex; flex-direction: column; gap: 2px; border-top: 3px solid var(--grid); }
-  .pday.today { border-color: var(--text-secondary); }
+  .pday.today, .day.today { outline: 2px solid var(--sport-run); outline-offset: 1px; background: color-mix(in srgb, var(--sport-run) 12%, transparent); }
+  .pday.today .pd-date span, .pday.today .pd-date b { color: var(--sport-run); font-weight: 700; }
+  #plan-card.collapsed .plan-wk.later { display: none; }
   .pday .pd-date { color: var(--text-muted); display: flex; justify-content: space-between; gap: 4px; }
   .pday .pd-title { font-weight: 600; color: var(--text-primary); font-size: 12px; line-height: 1.25; }
   .pday .pd-mi { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
@@ -321,7 +323,7 @@
     <div class="week-head">
       <h2 id="plan-title">Training plan</h2>
       <span class="range" id="plan-range"></span>
-      <div class="week-nav"><button class="chip" id="plan-jump">Jump to this week</button></div>
+      <div class="week-nav"><button class="chip" id="plan-toggle" aria-expanded="false">Show all weeks</button><button class="chip" id="plan-jump">Jump to this week</button></div>
     </div>
     <p class="week-totals" id="plan-totals"></p>
     <div class="plan-key" id="plan-key"></div>
@@ -1259,6 +1261,22 @@ function renderPlan() {
       Object.assign(document.createElement("span"), { textContent: `${shortDate(ws)} – ${shortDate(we)} · ${fmtNum(wkPlan, 0)} mi planned` + (ws <= today ? ` · ${fmtNum(wkDone, 1)} run` : "") + (notes.get(wk) ? ` · ${notes.get(wk)}` : "") }));
     box.append(head, grid); host.appendChild(box);
   }
+  // collapsed view: this week and next only (first two weeks before the plan starts)
+  const keepFrom = curWeek || (today < first ? 1 : null);
+  const boxes = [...host.children];
+  boxes.forEach((b, i) => b.classList.toggle("later", keepFrom != null && (i + 1 < keepFrom || i + 1 > keepFrom + 1)));
+  const hiddenN = boxes.filter((b) => b.classList.contains("later")).length;
+  const card = $("plan-card"), tog = $("plan-toggle");
+  const setCollapsed = (c) => {
+    card.classList.toggle("collapsed", c);
+    tog.textContent = c ? `Show all ${boxes.length} weeks` : "Show this week + next";
+    tog.setAttribute("aria-expanded", String(!c));
+    try { localStorage.setItem("planCollapsed", c ? "1" : "0"); } catch (e) {}
+  };
+  tog.hidden = !hiddenN;
+  let saved = null; try { saved = localStorage.getItem("planCollapsed"); } catch (e) {}
+  setCollapsed(hiddenN > 0 && saved !== "0");
+  tog.onclick = () => setCollapsed(!card.classList.contains("collapsed"));
   const daysLeft = Math.round((last - today) / 86400000);
   $("plan-totals").textContent = `${byWeek.size} weeks · ${fmtNum(planned, 0)} mi planned` + (curWeek ? ` · now in week ${curWeek}` : "") + (daysLeft >= 0 ? ` · ${daysLeft} days to race` : "");
   $("plan-jump").hidden = !curEl;
