@@ -1,0 +1,56 @@
+{
+ "race_name": "Oak Island",
+ "race_date": "2027-02-13",
+ "race_distance_mi": 26.25,
+ "goal_time": "4:00:00",
+ "recent_race": {
+  "distance_mi": 13.1094,
+  "time": "1:46:19",
+  "note": "Ocean Isle half, Oct 24 2026"
+ },
+ "easy_hr_max": 152,
+ "min_run_mi": 6,
+ "name": "Alternate \u00b7 Pfitzinger 18/70, adapted",
+ "template": "pfitz_18_70",
+ "overrides": {
+  "2026-11-02": [
+   "R",
+   6
+  ],
+  "2026-11-04": [
+   "R",
+   6
+  ],
+  "2026-11-05": [
+   "PL",
+   15
+  ],
+  "2026-11-06": [
+   "TRIP",
+   "Grayson trip",
+   "Hiking only. No run."
+  ],
+  "2026-11-07": [
+   "TRIP",
+   "Grayson trip",
+   "Hiking only. No run."
+  ],
+  "2026-11-08": [
+   "TRIP",
+   "Grayson trip",
+   "Hiking only. No run."
+  ],
+  "2026-11-09": [
+   "TRIP",
+   "Travel home",
+   "Rest day."
+  ]
+ },
+ "week_notes": {
+  "1": "Book wk 3 \u00b7 recovery from the half",
+  "2": "Grayson trip Fri-Mon: long run on Thu, Mon run instead of rest",
+  "3": "Endurance \u00b7 Mon is travel home",
+  "5": "Threshold block \u00b7 Thanksgiving Thu is recovery",
+  "9": "Peak long run \u00b7 Christmas Fri is recovery"
+ }
+}

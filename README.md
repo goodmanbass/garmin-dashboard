@@ -76,23 +76,35 @@ The race card stays empty until you create `data\goal.json`. For example:
 
 Then run `python build_dashboard.py` again.
 
-## 6. Training plan card (optional)
+## 6. Training plan cards (optional)
 
-Drop a `data\plan.json` in and the dashboard adds a day-by-day plan card. Each past day shows what you actually ran next to what was planned (green when you hit 90%+). Without the file, the card stays hidden.
+`plans/make_plan.py` builds a day-by-day marathon plan with **your** paces, race date and goal, and the dashboard shows it as a card. Each past day shows what you actually ran next to what was planned (green at 90%+).
 
-```json
-{
-  "name": "My marathon plan",
-  "weeks": [{"week": 1, "note": "Recovery week"}],
-  "key": [["Tempo", "3 x 1 mi at half-marathon pace, 2 min jog"]],
-  "days": [
-    {"date": "2027-01-04", "week": 1, "kind": "easy", "title": "6 easy", "mi": 6, "detail": "HR under 150"},
-    {"date": "2027-01-05", "week": 1, "kind": "speed", "title": "6 x 800", "mi": 7.5, "detail": "400 m jog between"}
-  ]
-}
+1. Copy `plans/example.json` into your own folder, e.g. `plans/my-plans/higdon.json`, and edit it:
+
+| Field | Meaning |
+|---|---|
+| `template` | `higdon_adv2` (Hal Higdon Advanced 2, adapted) or `pfitz_18_70` (Pfitzinger 18/70, adapted) |
+| `race_date`, `race_distance_mi`, `race_name` | Your race. Plans are 16 weeks ending on race day |
+| `goal_time` | Sets marathon pace |
+| `recent_race` | A recent race (distance in miles + time). Sets easy, tempo and interval paces. Leave it out to derive them from the goal |
+| `easy_hr_max` | Top of your easy heart-rate zone |
+| `min_run_mi` | Shortest run allowed outside race week (0 = no minimum) |
+| `start` | Optional. Join late: drop plan days before this date |
+| `overrides` | Swap any date's workout: `"2027-03-02": ["TRIP", "Work trip", "No run."]`, `["REST"]`, `["E", 6]`, `["L", 14]`, `["T", 4]` (tempo miles), `["S", "pyrA"]`, `["MP", 8]` |
+| `week_notes` | Notes shown on a week's header, by week number |
+
+2. Generate it, then rebuild:
+
+```powershell
+python plans\make_plan.py plans\my-plans\higdon.json data\plan.json
+python plans\make_plan.py plans\my-plans\pfitz.json data\plan2.json   # optional second card
+python build_dashboard.py
 ```
 
-`kind` sets the colour stripe: `easy`, `speed`, `tempo`, `ml` (medium-long), `mp` (marathon pace), `long`, `rest`, `race`. An optional `data\\plan2.json` in the same format shows as a second, alternate plan card. Hover a day to see its `detail`.
+`data\plan.json` is the main card and `data\plan2.json` the optional alternate. Without them the cards stay hidden. `plans/beans-plans/` holds the original author's two plans as worked examples.
+
+The templates are built from each plan's published structure, not copied from the books' or site's daily tables.
 
 ---
 

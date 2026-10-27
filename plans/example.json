@@ -1,0 +1,28 @@
+{
+ "_readme": "Copy to plans/<your-name>/, edit, then: python plans/make_plan.py plans/<your-name>/my-plan.json data/plan.json",
+ "name": "My marathon plan",
+ "template": "higdon_adv2",
+ "race_name": "My Marathon",
+ "race_date": "2027-04-18",
+ "race_distance_mi": 26.2188,
+ "goal_time": "3:50:00",
+ "recent_race": {
+  "distance_mi": 13.1094,
+  "time": "1:50:00"
+ },
+ "easy_hr_max": 150,
+ "min_run_mi": 0,
+ "overrides": {
+  "2027-02-14": [
+   "REST"
+  ],
+  "2027-03-02": [
+   "TRIP",
+   "Work trip",
+   "No run."
+  ]
+ },
+ "week_notes": {
+  "1": "Easy start"
+ }
+}

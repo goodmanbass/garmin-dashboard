@@ -1,0 +1,60 @@
+{
+ "race_name": "Oak Island",
+ "race_date": "2027-02-13",
+ "race_distance_mi": 26.25,
+ "goal_time": "4:00:00",
+ "recent_race": {
+  "distance_mi": 13.1094,
+  "time": "1:46:19",
+  "note": "Ocean Isle half, Oct 24 2026"
+ },
+ "easy_hr_max": 152,
+ "min_run_mi": 6,
+ "name": "Oak Island marathon \u00b7 Higdon Advanced 2, adapted",
+ "template": "higdon_adv2",
+ "overrides": {
+  "2026-11-04": [
+   "MP",
+   6
+  ],
+  "2026-11-05": [
+   "L",
+   12
+  ],
+  "2026-11-06": [
+   "TRIP",
+   "Grayson trip",
+   "Hiking only. No run."
+  ],
+  "2026-11-07": [
+   "TRIP",
+   "Grayson trip",
+   "Hiking only. No run."
+  ],
+  "2026-11-08": [
+   "TRIP",
+   "Grayson trip",
+   "Hiking only. No run."
+  ],
+  "2026-11-09": [
+   "TRIP",
+   "Travel home",
+   "Rest day."
+  ],
+  "2026-11-25": [
+   "T",
+   4
+  ],
+  "2026-11-26": [
+   "E",
+   8
+  ]
+ },
+ "week_notes": {
+  "1": "Recovery from the half",
+  "2": "Grayson trip Fri-Mon: long run moves to Thu",
+  "3": "Mon is travel home",
+  "5": "Thanksgiving: tempo moves to Wed",
+  "9": "Christmas Fri is the rest day. First 20"
+ }
+}
