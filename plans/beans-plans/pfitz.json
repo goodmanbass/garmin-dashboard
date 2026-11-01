@@ -10,20 +10,22 @@
  },
  "easy_hr_max": 152,
  "min_run_mi": 6,
- "name": "Alternate \u00b7 Pfitzinger 18/70, adapted",
- "template": "pfitz_18_70",
+ "name": "Alternate \u00b7 Pfitzinger 18/55, adapted",
+ "template": "pfitz_18_55",
  "overrides": {
   "2026-11-02": [
+   "REST"
+  ],
+  "2026-11-03": [
    "R",
-   6
+   4
   ],
   "2026-11-04": [
-   "R",
-   6
+   "REST"
   ],
   "2026-11-05": [
-   "PL",
-   15
+   "R",
+   6
   ],
   "2026-11-06": [
    "TRIP",
@@ -48,9 +50,9 @@
  },
  "week_notes": {
   "1": "Book wk 3 \u00b7 recovery from the half",
-  "2": "Grayson trip Fri-Mon: long run on Thu, Mon run instead of rest",
-  "3": "Endurance \u00b7 Mon is travel home",
-  "5": "Threshold block \u00b7 Thanksgiving Thu is recovery",
-  "9": "Peak long run \u00b7 Christmas Fri is recovery"
+  "2": "Still recovering: no workout, no long run. Grayson Fri-Mon",
+  "3": "Easy return after Grayson \u00b7 Mon is travel home",
+  "5": "Thanksgiving Thu is recovery",
+  "9": "Christmas Fri is recovery"
  }
 }

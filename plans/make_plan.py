@@ -12,6 +12,8 @@ Templates (16 weeks, ending on race day):
   higdon_adv2  Hal Higdon Advanced 2, adapted: Tue speed (pyramids, 800s, mile
                repeats), Thu tempo miles 3 -> 4 -> 5, Sat marathon pace, Sun long,
                three 20-milers, Fri rest.
+  pfitz_18_55  Pfitzinger 18/55 structure (book weeks 3-18): same shape as 18/70 at
+               lower volume, peak ~55 mi, two 20-milers, two tune-ups, 3-week taper.
   pfitz_18_70  Pfitzinger 18/70 structure (book weeks 3-18): Mon rest, one hard day
                (lactate threshold, later VO2 1000s), Wed medium-long, long runs to 22,
                marathon-pace long runs, two tune-up races, 3-week taper.
@@ -174,6 +176,27 @@ TEMPLATES = {
         ],
         "countdown": {-6: ["REST"], -5: ["REST"], -4: ["R", 6], -3: ["DRESS"], -2: ["STRIDES5"], -1: ["SHAKE"]},
     },
+    "pfitz_18_55": {
+        "label": "Pfitzinger 18/55, adapted",
+        "weeks": [
+            ("Book wk 3 · easy start", [["REST"], ["R", 6], ["GA", 8], ["R", 6], ["GA", 8], ["R", 6], ["PL", 12]]),
+            ("Endurance", [["REST"], ["LT", 8, 20], ["ML", 10], ["R", 6], ["GA", 7], ["R", 6], ["PL", 13]]),
+            ("Endurance · easy return", [["REST"], ["R", 6], ["GA", 8], ["R", 6], ["GA", 8], ["R", 6], ["PL", 12]]),
+            ("Endurance", [["REST"], ["LT", 8, 20], ["ML", 11], ["R", 6], ["GA", 7], ["R", 6], ["PL", 14]]),
+            ("Endurance", [["REST"], ["R", 6], ["ML", 11], ["R", 6], ["LT", 9, 25], ["R", 6], ["PL", 15]]),
+            ("Threshold · first MP long run", [["REST"], ["LT", 9, 25], ["ML", 12], ["R", 6], ["GA", 7], ["R", 6], ["LMP", 16, 8]]),
+            ("Stepback", [["REST"], ["R", 6], ["ML", 10], ["R", 6], ["GA", 7], ["R", 6], ["PL", 13]]),
+            ("Threshold", [["REST"], ["LT", 10, 30], ["ML", 12], ["R", 6], ["R", 6], ["R", 6], ["PL", 16]]),
+            ("Threshold · 18", [["REST"], ["R", 6], ["ML", 11], ["LT", 9, 25], ["R", 6], ["R", 6], ["PL", 18]]),
+            ("Race prep · VO2 starts", [["REST"], ["VO", 9, "5 x 1000 m"], ["ML", 12], ["R", 6], ["GA", 6], ["R", 6], ["LMP", 16, 10]]),
+            ("Race prep · first 20", [["REST"], ["VO", 9, "5 x 1000 m"], ["ML", 12], ["R", 6], ["REST"], ["R", 6], ["PL", 20]]),
+            ("Race prep · tune-up Sat", [["REST"], ["GA", 7], ["ML", 11], ["R", 6], ["R", 6], ["TUNE"], ["PL", 15]]),
+            ("Race prep · last 20", [["REST"], ["VO", 9, "5 x 1200 m"], ["ML", 12], ["R", 6], ["REST"], ["R", 6], ["PL", 20]]),
+            ("Taper 1 · tune-up Sat", [["REST"], ["VO", 8, "5 x 1000 m"], ["ML", 10], ["R", 6], ["REST"], ["TUNE"], ["PL", 13]]),
+            ("Taper 2", [["REST"], ["R", 6], ["ML", 9], ["LT", 7, 20], ["R", 6], ["REST"], ["PL", 11]]),
+        ],
+        "countdown": {-6: ["REST"], -5: ["REST"], -4: ["R", 6], -3: ["DRESS"], -2: ["STRIDES5"], -1: ["SHAKE"]},
+    },
 }
 
 
@@ -200,8 +223,9 @@ def build(cfg: dict) -> dict:
         week_notes.append({"week": w + 1, "note": notes.get(w + 1, note)})
         for i, spec in enumerate(row):
             dt = start + timedelta(days=7 * w + i)
+            ov = dt.isoformat() in overrides
             kind, title, mi, detail = call(overrides.get(dt.isoformat(), spec))
-            if kind == "easy" and mi < floor:  # minimum run length outside race week
+            if kind == "easy" and mi < floor and not ov:  # explicit overrides may go shorter  
                 mi = floor
                 title = title.replace(title.split()[0], f"{floor:g}", 1)
             days.append({"date": dt.isoformat(), "week": w + 1, "kind": kind, "title": title, "mi": mi, "detail": detail})
