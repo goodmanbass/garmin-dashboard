@@ -1,0 +1,10 @@
+{
+ "to": "you@example.com",
+ "data_dir": "data",
+ "plan_file": "plan.json",
+ "easy_hr_max": 152,
+ "recovery_hr_max": 140,
+ "gmail_token": "~/.hermes/google_token.json",
+ "refresh_cmd": [],
+ "dashboard_note": ""
+}

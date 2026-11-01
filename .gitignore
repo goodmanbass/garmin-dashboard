@@ -15,3 +15,6 @@ venv/
 # Garmin sign-in tokens never live in this folder, but just in case
 .garminconnect/
 garmin_tokens.json
+
+# Personal report config (email address etc.)
+report/*.local.json

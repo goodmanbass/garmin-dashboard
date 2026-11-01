@@ -108,6 +108,21 @@ The templates are built from each plan's published structure, not copied from th
 
 ---
 
+## 7. Weekly email report (optional)
+
+`report/weekly_report.py` emails a plain-text recap of the last 7 days: every
+activity next to the planned workout, HR-cap misses, and 7-day averages for HRV,
+resting HR, sleep and Body Battery vs. the week before, with a green/yellow/red
+call and next week's plan.
+
+1. Copy `report/example.json` to `report/me.local.json` (gitignored) and fill in
+   your email, data folder, plan file and HR caps. `gmail_token` is a Google
+   OAuth token with Gmail send access. `refresh_cmd` (optional) is the command
+   that pulls fresh Garmin data first.
+2. Test: `python report/weekly_report.py report/me.local.json --dry-run`
+3. Schedule it weekly (cron / Task Scheduler), e.g. Saturday 5 AM:
+   `0 5 * * 6 python /path/to/report/weekly_report.py /path/to/me.local.json`
+
 ## Mac / Linux
 
 The steps are the same, using a terminal instead of the `.bat` and `.ps1` files:
